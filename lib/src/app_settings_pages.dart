@@ -190,10 +190,12 @@ class _CategoriesPageState extends State<_CategoriesPage> {
   void initState() {
     super.initState();
     final categories = widget.controller.favoriteCategories.isEmpty
-        ? const <String>['Favorites']
+        ? const <FavoriteCategory>[
+            FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+          ]
         : widget.controller.favoriteCategories;
     _controllers = categories
-        .map((category) => TextEditingController(text: category))
+        .map((category) => TextEditingController(text: category.name))
         .toList(growable: true);
   }
 

@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/favorite_category.dart';
 import '../models/radio_station.dart';
 
 class AppSettings {
@@ -8,21 +9,23 @@ class AppSettings {
     this.circleThroughFavorites = true,
     this.countryCodes = const <String>[],
     this.manualStations = const <RadioStation>[],
-    this.favoriteCategories = const <String>['Favorites'],
+    this.favoriteCategories = const <FavoriteCategory>[
+      FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+    ],
   });
 
   final bool showStationIcon;
   final bool circleThroughFavorites;
   final List<String> countryCodes;
   final List<RadioStation> manualStations;
-  final List<String> favoriteCategories;
+  final List<FavoriteCategory> favoriteCategories;
 
   AppSettings copyWith({
     bool? showStationIcon,
     bool? circleThroughFavorites,
     List<String>? countryCodes,
     List<RadioStation>? manualStations,
-    List<String>? favoriteCategories,
+    List<FavoriteCategory>? favoriteCategories,
   }) {
     return AppSettings(
       showStationIcon: showStationIcon ?? this.showStationIcon,
@@ -53,9 +56,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
 
   @override
   Future<AppSettings> loadSettings() async {
-    final favoriteCategories =
-        _preferences.getStringList(_favoriteCategoriesKey) ??
-        const <String>['Favorites'];
+    final favoriteCategories = _loadFavoriteCategories();
     return AppSettings(
       showStationIcon: _preferences.getBool(_showStationIconKey) ?? false,
       circleThroughFavorites:
@@ -67,11 +68,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
         (_preferences.getStringList(_manualStationsKey) ?? const <String>[])
             .map(RadioStation.fromStorage),
       ),
-      favoriteCategories: List<String>.unmodifiable(
-        favoriteCategories.isEmpty
-            ? const <String>['Favorites']
-            : favoriteCategories,
-      ),
+      favoriteCategories: favoriteCategories,
     );
   }
 
@@ -89,7 +86,34 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     );
     await _preferences.setStringList(
       _favoriteCategoriesKey,
-      settings.favoriteCategories,
+      settings.favoriteCategories
+          .map((category) => category.toStorage())
+          .toList(growable: false),
     );
+  }
+
+  List<FavoriteCategory> _loadFavoriteCategories() {
+    final rawCategories =
+        _preferences.getStringList(_favoriteCategoriesKey) ??
+        const <String>['Favorites'];
+    final categories = <FavoriteCategory>[];
+
+    for (var index = 0; index < rawCategories.length; index += 1) {
+      final category = FavoriteCategory.fromStorage(
+        rawCategories[index],
+        index: index,
+      );
+      if (category.name.trim().isNotEmpty) {
+        categories.add(category);
+      }
+    }
+
+    if (categories.isEmpty) {
+      return const <FavoriteCategory>[
+        FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+      ];
+    }
+
+    return List<FavoriteCategory>.unmodifiable(categories);
   }
 }

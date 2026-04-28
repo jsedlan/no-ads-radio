@@ -443,9 +443,9 @@ String _selectedCountriesSummary(List<String> selectedCountryCodes) {
   return names.join(', ');
 }
 
-String _favoriteCategoriesSummary(List<String> categories) {
+String _favoriteCategoriesSummary(List<FavoriteCategory> categories) {
   final normalized = categories
-      .map((value) => value.trim())
+      .map((category) => category.name.trim())
       .where((value) => value.isNotEmpty)
       .toList(growable: false);
   if (normalized.isEmpty) {
@@ -454,13 +454,14 @@ String _favoriteCategoriesSummary(List<String> categories) {
   return normalized.join(', ');
 }
 
-List<String> _visibleCategoryNames(List<String> categories) {
+List<FavoriteCategory> _visibleCategories(List<FavoriteCategory> categories) {
   final normalized = categories
-      .map((value) => value.trim())
-      .where((value) => value.isNotEmpty)
+      .where((category) => category.name.trim().isNotEmpty)
       .toList(growable: false);
   if (normalized.isEmpty) {
-    return const <String>['Favorites'];
+    return const <FavoriteCategory>[
+      FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+    ];
   }
   return normalized.take(3).toList(growable: false);
 }

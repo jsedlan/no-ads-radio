@@ -129,6 +129,62 @@ void main() {
       controller.dispose();
     },
   );
+
+  test('sleep timer stops playback when it expires', () async {
+    final audioEngine = FakeAudioEngine();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: audioEngine,
+      connectivityService: FakeConnectivityService.online(),
+    );
+    final station = controller.discoverStations.first;
+
+    await controller.playStation(station);
+    controller.setSleepTimer(const Duration(seconds: 1));
+
+    expect(controller.isSleepTimerActive, isTrue);
+    expect(controller.currentStation, station);
+
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+
+    expect(controller.isSleepTimerActive, isFalse);
+    expect(controller.currentStation, isNull);
+    expect(controller.playback.status, PlaybackStatus.idle);
+
+    controller.dispose();
+  });
+
+  testWidgets('custom sleep timer accepts 60 minutes', (tester) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await controller.playStation(controller.discoverStations.first);
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.timer_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Custom'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, '60');
+    await tester.tap(find.text('Start'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(controller.isSleepTimerActive, isTrue);
+    expect(controller.sleepTimerRemaining.inMinutes, greaterThanOrEqualTo(59));
+
+    controller.dispose();
+  });
 }
 
 class FakeStationRepository implements StationRepository {
@@ -197,14 +253,22 @@ class FakeStationRepository implements StationRepository {
 }
 
 class InMemoryFavoritesStore implements FavoritesStore {
-  List<RadioStation> _favorites = const <RadioStation>[];
+  Map<String, List<RadioStation>> _favorites =
+      const <String, List<RadioStation>>{};
 
   @override
-  Future<List<RadioStation>> loadFavorites() async => _favorites;
+  Future<Map<String, List<RadioStation>>> loadFavorites() async => _favorites;
 
   @override
-  Future<void> saveFavorites(List<RadioStation> stations) async {
-    _favorites = List<RadioStation>.from(stations);
+  Future<void> saveFavorites(
+    Map<String, List<RadioStation>> stationsByCategory,
+  ) async {
+    _favorites = Map<String, List<RadioStation>>.unmodifiable(
+      stationsByCategory.map(
+        (category, stations) =>
+            MapEntry(category, List<RadioStation>.unmodifiable(stations)),
+      ),
+    );
   }
 }
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../audio/audio_engine.dart';
+import '../models/favorite_category.dart';
 import '../models/radio_station.dart';
 import '../models/search_query.dart';
 import '../services/connectivity_service.dart';
@@ -67,6 +68,11 @@ class RadioAppController extends ChangeNotifier {
   final Duration _playbackStallThreshold;
   final Duration _playbackStallPollInterval;
   static const Duration _internetRetryInterval = Duration(seconds: 5);
+  static const List<Duration> sleepTimerOptions = <Duration>[
+    Duration(minutes: 15),
+    Duration(minutes: 30),
+    Duration(minutes: 45),
+  ];
 
   List<RadioStation> discoverStations = const <RadioStation>[];
   List<RadioStation> searchResults = const <RadioStation>[];
@@ -84,7 +90,9 @@ class RadioAppController extends ChangeNotifier {
   bool showStationIcon = false;
   bool circleThroughFavorites = true;
   List<String> countryCodes = const <String>[];
-  List<String> favoriteCategories = const <String>['Favorites'];
+  List<FavoriteCategory> favoriteCategories = const <FavoriteCategory>[
+    FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+  ];
 
   StationSearchQuery activeSearchQuery = const StationSearchQuery();
   RadioStation? currentStation;
@@ -92,16 +100,33 @@ class RadioAppController extends ChangeNotifier {
   ConnectivitySnapshot connectivity = const ConnectivitySnapshot.unknown();
   bool playbackStalled = false;
   PlaybackStallReason? playbackStallReason;
+  DateTime? sleepTimerEndsAt;
   int selectedTab = 0;
   int _activeFavoriteCategoryIndex = 0;
 
   bool get isOffline => connectivity.isOffline;
+  bool get isSleepTimerActive => sleepTimerEndsAt != null;
+  Duration get sleepTimerRemaining {
+    final endsAt = sleepTimerEndsAt;
+    if (endsAt == null) {
+      return Duration.zero;
+    }
+    final remaining = endsAt.difference(DateTime.now());
+    if (remaining.isNegative) {
+      return Duration.zero;
+    }
+    return remaining;
+  }
+
   bool get canCircleThroughFavorites => favoriteCategories.any(
-    (category) => favoritesForCategory(category).length >= 2,
+    (category) => favoritesForCategory(category.id).length >= 2,
   );
-  String get activeFavoriteCategoryName {
+  FavoriteCategory get activeFavoriteCategory {
     if (favoriteCategories.isEmpty) {
-      return 'Favorites';
+      return const FavoriteCategory(
+        id: 'category-0-favorites',
+        name: 'Favorites',
+      );
     }
     final index = _activeFavoriteCategoryIndex.clamp(
       0,
@@ -110,12 +135,15 @@ class RadioAppController extends ChangeNotifier {
     return favoriteCategories[index];
   }
 
+  String get activeFavoriteCategoryId => activeFavoriteCategory.id;
+
   List<RadioStation> get favorites =>
-      favoritesForCategory(activeFavoriteCategoryName);
+      favoritesForCategory(activeFavoriteCategoryId);
 
   Timer? _playbackStallTimer;
   Timer? _internetRetryTimer;
   Timer? _simulatedStallTimer;
+  Timer? _sleepTimer;
   Duration _lastObservedPosition = Duration.zero;
   Duration _lastObservedBufferedPosition = Duration.zero;
   DateTime? _lastPositionAdvancedAt;
@@ -139,7 +167,9 @@ class RadioAppController extends ChangeNotifier {
       countryCodes = settings.countryCodes;
       manualStations = settings.manualStations;
       favoriteCategories = settings.favoriteCategories.isEmpty
-          ? const <String>['Favorites']
+          ? const <FavoriteCategory>[
+              FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+            ]
           : settings.favoriteCategories;
       _syncFavoriteCategoriesWithSavedData();
       await refreshDiscover();
@@ -221,30 +251,33 @@ class RadioAppController extends ChangeNotifier {
     return List<RadioStation>.unmodifiable(result);
   }
 
-  List<RadioStation> favoritesForCategory(String categoryName) {
+  List<RadioStation> favoritesForCategory(String categoryId) {
     return List<RadioStation>.unmodifiable(
-      favoritesByCategory[categoryName] ?? const <RadioStation>[],
+      favoritesByCategory[categoryId] ?? const <RadioStation>[],
     );
   }
 
-  List<RadioStation> get allFavoriteStations =>
-      favoriteCategories.expand(favoritesForCategory).toList(growable: false);
+  List<RadioStation> get allFavoriteStations => favoriteCategories
+      .expand((category) => favoritesForCategory(category.id))
+      .toList(growable: false);
 
-  String _normalizedFavoriteCategoryName(String? categoryName) {
-    final normalized = categoryName?.trim();
+  String _normalizedFavoriteCategoryId(String? categoryId) {
+    final normalized = categoryId?.trim();
     if (normalized != null &&
         normalized.isNotEmpty &&
-        favoriteCategories.contains(normalized)) {
+        favoriteCategories.any((category) => category.id == normalized)) {
       return normalized;
     }
-    return activeFavoriteCategoryName;
+    return activeFavoriteCategoryId;
   }
 
   void _syncFavoriteCategoriesWithSavedData() {
     final nextMap = <String, List<RadioStation>>{};
     for (final category in favoriteCategories) {
-      nextMap[category] = List<RadioStation>.unmodifiable(
-        favoritesByCategory[category] ?? const <RadioStation>[],
+      nextMap[category.id] = List<RadioStation>.unmodifiable(
+        favoritesByCategory[category.id] ??
+            favoritesByCategory[category.name] ??
+            const <RadioStation>[],
       );
     }
     favoritesByCategory = Map<String, List<RadioStation>>.unmodifiable(nextMap);
@@ -259,17 +292,17 @@ class RadioAppController extends ChangeNotifier {
   }
 
   Map<String, List<RadioStation>> _withCategoryFavorites(
-    String categoryName,
+    String categoryId,
     List<RadioStation> stations,
   ) {
     final nextMap = Map<String, List<RadioStation>>.from(favoritesByCategory);
-    nextMap[categoryName] = List<RadioStation>.unmodifiable(stations);
+    nextMap[categoryId] = List<RadioStation>.unmodifiable(stations);
     return Map<String, List<RadioStation>>.unmodifiable(nextMap);
   }
 
   Map<String, List<RadioStation>> _remapFavoritesByCategory(
-    List<String> previousCategories,
-    List<String> nextCategories,
+    List<FavoriteCategory> previousCategories,
+    List<FavoriteCategory> nextCategories,
   ) {
     final remapped = <String, List<RadioStation>>{};
     for (var index = 0; index < nextCategories.length; index += 1) {
@@ -277,21 +310,23 @@ class RadioAppController extends ChangeNotifier {
       final previousCategory = index < previousCategories.length
           ? previousCategories[index]
           : null;
-      remapped[nextCategory] = List<RadioStation>.unmodifiable(
+      remapped[nextCategory.id] = List<RadioStation>.unmodifiable(
         previousCategory == null
             ? const <RadioStation>[]
-            : (favoritesByCategory[previousCategory] ?? const <RadioStation>[]),
+            : (favoritesByCategory[previousCategory.id] ??
+                  favoritesByCategory[previousCategory.name] ??
+                  const <RadioStation>[]),
       );
     }
     return Map<String, List<RadioStation>>.unmodifiable(remapped);
   }
 
-  String? _favoriteCategoryNameForStation(RadioStation station) {
+  String? _favoriteCategoryIdForStation(RadioStation station) {
     for (final category in favoriteCategories) {
       if (favoritesForCategory(
-        category,
+        category.id,
       ).any((item) => item.stationUuid == station.stationUuid)) {
-        return category;
+        return category.id;
       }
     }
     return null;
@@ -316,10 +351,10 @@ class RadioAppController extends ChangeNotifier {
 
   Future<void> toggleFavorite(
     RadioStation station, {
-    String? categoryName,
+    String? categoryId,
   }) async {
     favoritesError = null;
-    final targetCategory = _normalizedFavoriteCategoryName(categoryName);
+    final targetCategory = _normalizedFavoriteCategoryId(categoryId);
     final currentFavorites = List<RadioStation>.from(
       favoritesForCategory(targetCategory),
     );
@@ -347,9 +382,9 @@ class RadioAppController extends ChangeNotifier {
     }
   }
 
-  bool isFavorite(String stationUuid, {String? categoryName}) {
+  bool isFavorite(String stationUuid, {String? categoryId}) {
     return favoritesForCategory(
-      _normalizedFavoriteCategoryName(categoryName),
+      _normalizedFavoriteCategoryId(categoryId),
     ).any((station) => station.stationUuid == stationUuid);
   }
 
@@ -428,12 +463,54 @@ class RadioAppController extends ChangeNotifier {
   }
 
   Future<void> stopPlayback() async {
+    _cancelSleepTimer(notify: false);
     _stopInternetRecoveryRetryLoop();
     await _audioEngine.stop();
     currentStation = null;
     _stopPlaybackStallWatchdog();
     playback = const PlaybackSnapshot.idle();
     notifyListeners();
+  }
+
+  void setSleepTimer(Duration? duration) {
+    _cancelSleepTimer(notify: false);
+    if (duration == null || duration <= Duration.zero) {
+      notifyListeners();
+      return;
+    }
+
+    sleepTimerEndsAt = DateTime.now().add(duration);
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final remaining = sleepTimerRemaining;
+      if (remaining <= Duration.zero) {
+        unawaited(_handleSleepTimerFinished());
+        return;
+      }
+      notifyListeners();
+    });
+    notifyListeners();
+  }
+
+  void cancelSleepTimer() {
+    _cancelSleepTimer();
+  }
+
+  void _cancelSleepTimer({bool notify = true}) {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    sleepTimerEndsAt = null;
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  Future<void> _handleSleepTimerFinished() async {
+    if (_sleepTimer == null && sleepTimerEndsAt == null) {
+      return;
+    }
+
+    _cancelSleepTimer(notify: false);
+    await stopPlayback();
   }
 
   void selectTab(int value) {
@@ -483,8 +560,19 @@ class RadioAppController extends ChangeNotifier {
         .map((value) => value.trim())
         .where((value) => value.isNotEmpty)
         .toList(growable: false);
-    favoriteCategories = List<String>.unmodifiable(
-      normalized.isEmpty ? const <String>['Favorites'] : normalized,
+    final categoryNames = normalized.isEmpty
+        ? const <String>['Favorites']
+        : normalized;
+    favoriteCategories = List<FavoriteCategory>.unmodifiable(
+      List<FavoriteCategory>.generate(categoryNames.length, (index) {
+        if (index < previousCategories.length) {
+          return previousCategories[index].copyWith(name: categoryNames[index]);
+        }
+        return FavoriteCategory(
+          id: 'category-${DateTime.now().microsecondsSinceEpoch}-$index',
+          name: categoryNames[index],
+        );
+      }),
     );
     favoritesByCategory = _remapFavoritesByCategory(
       previousCategories,
@@ -704,12 +792,12 @@ class RadioAppController extends ChangeNotifier {
       return null;
     }
 
-    final categoryName = _favoriteCategoryNameForStation(station);
-    if (categoryName == null) {
+    final categoryId = _favoriteCategoryIdForStation(station);
+    if (categoryId == null) {
       return null;
     }
 
-    final stations = favoritesForCategory(categoryName);
+    final stations = favoritesForCategory(categoryId);
     if (stations.length < 2) {
       return null;
     }
@@ -816,6 +904,7 @@ class RadioAppController extends ChangeNotifier {
     _playbackStallTimer?.cancel();
     _internetRetryTimer?.cancel();
     _simulatedStallTimer?.cancel();
+    _sleepTimer?.cancel();
     unawaited(_audioEngine.dispose());
     unawaited(_connectivityService.dispose());
     super.dispose();
