@@ -64,20 +64,29 @@ class RadioHomePage extends StatefulWidget {
 }
 
 class _RadioHomePageState extends State<RadioHomePage> {
-  bool _isFavoriteDropTargetActive = false;
+  int? _favoriteDropTargetIndex;
   bool _isDraggingDiscoverStation = false;
 
   RadioAppController get controller => widget.controller;
 
-  void _handleFavoriteDrop(RadioStation station) {
-    unawaited(_saveFavoriteFromDrop(station));
+  void _handleFavoriteDrop(RadioStation station, int categoryIndex) {
+    unawaited(_saveFavoriteFromDrop(station, categoryIndex));
   }
 
-  Future<void> _saveFavoriteFromDrop(RadioStation station) async {
-    if (!controller.isFavorite(station.stationUuid)) {
-      await controller.toggleFavorite(station);
+  Future<void> _saveFavoriteFromDrop(
+    RadioStation station,
+    int categoryIndex,
+  ) async {
+    final categoryName = _visibleCategoryNames(
+      controller.favoriteCategories,
+    )[categoryIndex];
+    if (!controller.isFavorite(
+      station.stationUuid,
+      categoryName: categoryName,
+    )) {
+      await controller.toggleFavorite(station, categoryName: categoryName);
     }
-    controller.selectTab(1);
+    controller.selectTab(categoryIndex + 1);
   }
 
   @override
@@ -85,6 +94,13 @@ class _RadioHomePageState extends State<RadioHomePage> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
+        final visibleCategoryNames = _visibleCategoryNames(
+          controller.favoriteCategories,
+        );
+        final totalTabCount = 1 + visibleCategoryNames.length;
+        final selectedIndex = controller.selectedTab >= totalTabCount
+            ? 0
+            : controller.selectedTab;
         if (controller.isBootstrapping) {
           return const _Shell(
             child: Center(child: CircularProgressIndicator()),
@@ -100,18 +116,20 @@ class _RadioHomePageState extends State<RadioHomePage> {
                   children: [
                     NavigationBar(
                       backgroundColor: const Color(0xFF0F1620),
-                      selectedIndex: controller.selectedTab,
+                      selectedIndex: selectedIndex,
                       onDestinationSelected: controller.selectTab,
-                      destinations: const [
-                        NavigationDestination(
+                      destinations: [
+                        const NavigationDestination(
                           icon: Icon(Icons.explore_outlined),
                           selectedIcon: Icon(Icons.explore),
-                          label: 'Discover',
+                          label: 'Stations',
                         ),
-                        NavigationDestination(
-                          icon: Icon(Icons.favorite_border),
-                          selectedIcon: Icon(Icons.favorite),
-                          label: 'Favorites',
+                        ...visibleCategoryNames.map(
+                          (categoryName) => NavigationDestination(
+                            icon: const Icon(Icons.favorite_border),
+                            selectedIcon: const Icon(Icons.favorite),
+                            label: categoryName,
+                          ),
                         ),
                       ],
                     ),
@@ -120,56 +138,95 @@ class _RadioHomePageState extends State<RadioHomePage> {
                         top: 0,
                         right: 0,
                         bottom: 0,
-                        width: constraints.maxWidth / 2,
+                        width:
+                            constraints.maxWidth *
+                            (visibleCategoryNames.length / totalTabCount),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 8,
                           ),
-                          child: DragTarget<RadioStation>(
-                            onWillAcceptWithDetails: (details) {
-                              final canAccept = !controller.isFavorite(
-                                details.data.stationUuid,
-                              );
-                              setState(() {
-                                _isFavoriteDropTargetActive = canAccept;
-                              });
-                              return canAccept;
-                            },
-                            onLeave: (_) {
-                              setState(() {
-                                _isFavoriteDropTargetActive = false;
-                              });
-                            },
-                            onAcceptWithDetails: (details) {
-                              setState(() {
-                                _isFavoriteDropTargetActive = false;
-                                _isDraggingDiscoverStation = false;
-                              });
-                              _handleFavoriteDrop(details.data);
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              final isActive =
-                                  _isFavoriteDropTargetActive &&
-                                  candidateData.isNotEmpty;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 120),
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? const Color(
-                                          0xFFFF8A5B,
-                                        ).withValues(alpha: 0.18)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: isActive
-                                        ? const Color(0xFFFF8A5B)
-                                        : Colors.transparent,
-                                    width: 2,
+                          child: Row(
+                            children: List<Widget>.generate(
+                              visibleCategoryNames.length,
+                              (index) {
+                                final categoryName =
+                                    visibleCategoryNames[index];
+                                return Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      left: index == 0 ? 0 : 4,
+                                      right:
+                                          index ==
+                                              visibleCategoryNames.length - 1
+                                          ? 0
+                                          : 4,
+                                    ),
+                                    child: DragTarget<RadioStation>(
+                                      onWillAcceptWithDetails: (details) {
+                                        final canAccept = !controller
+                                            .isFavorite(
+                                              details.data.stationUuid,
+                                              categoryName: categoryName,
+                                            );
+                                        setState(() {
+                                          _favoriteDropTargetIndex = canAccept
+                                              ? index
+                                              : null;
+                                        });
+                                        return canAccept;
+                                      },
+                                      onLeave: (_) {
+                                        setState(() {
+                                          _favoriteDropTargetIndex = null;
+                                        });
+                                      },
+                                      onAcceptWithDetails: (details) {
+                                        setState(() {
+                                          _favoriteDropTargetIndex = null;
+                                          _isDraggingDiscoverStation = false;
+                                        });
+                                        _handleFavoriteDrop(
+                                          details.data,
+                                          index,
+                                        );
+                                      },
+                                      builder:
+                                          (
+                                            context,
+                                            candidateData,
+                                            rejectedData,
+                                          ) {
+                                            final isActive =
+                                                _favoriteDropTargetIndex ==
+                                                    index &&
+                                                candidateData.isNotEmpty;
+                                            return AnimatedContainer(
+                                              duration: const Duration(
+                                                milliseconds: 120,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isActive
+                                                    ? const Color(
+                                                        0xFFFF8A5B,
+                                                      ).withValues(alpha: 0.18)
+                                                    : Colors.transparent,
+                                                borderRadius:
+                                                    BorderRadius.circular(24),
+                                                border: Border.all(
+                                                  color: isActive
+                                                      ? const Color(0xFFFF8A5B)
+                                                      : Colors.transparent,
+                                                  width: 2,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -186,7 +243,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: IndexedStack(
-                      index: controller.selectedTab,
+                      index: selectedIndex,
                       children: [
                         _DiscoverTab(
                           controller: controller,
@@ -197,12 +254,17 @@ class _RadioHomePageState extends State<RadioHomePage> {
                             setState(() {
                               _isDraggingDiscoverStation = isDragging;
                               if (!isDragging) {
-                                _isFavoriteDropTargetActive = false;
+                                _favoriteDropTargetIndex = null;
                               }
                             });
                           },
                         ),
-                        _FavoritesTab(controller: controller),
+                        ...visibleCategoryNames.map(
+                          (categoryName) => _FavoritesTab(
+                            controller: controller,
+                            categoryName: categoryName,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -450,17 +512,18 @@ class _DiscoverTab extends StatelessWidget {
 }
 
 class _FavoritesTab extends StatelessWidget {
-  const _FavoritesTab({required this.controller});
+  const _FavoritesTab({required this.controller, required this.categoryName});
 
   final RadioAppController controller;
+  final String categoryName;
 
   @override
   Widget build(BuildContext context) {
     return _StationList(
       controller: controller,
-      stations: controller.favorites,
+      stations: controller.favoritesForCategory(categoryName),
       emptyMessage:
-          'No favorites yet. Save stations from Discover to build a personal set.',
+          'No favorites in $categoryName yet. Save stations from Stations to build this category.',
     );
   }
 }
@@ -480,9 +543,41 @@ class _SettingsView extends StatelessWidget {
         final selectedCountriesSummary = _selectedCountriesSummary(
           controller.countryCodes,
         );
+        final categoriesSummary = _favoriteCategoriesSummary(
+          controller.favoriteCategories,
+        );
 
         return ListView(
           children: [
+            Card(
+              child: ListTile(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) =>
+                          _CategoriesPage(controller: controller),
+                    ),
+                  );
+                },
+                title: Text(
+                  'Categories',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  categoriesSummary,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+              ),
+            ),
             Card(
               child: ListTile(
                 onTap: () {
@@ -494,7 +589,7 @@ class _SettingsView extends StatelessWidget {
                   );
                 },
                 title: Text(
-                  'Discover countries',
+                  'Station countries',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -603,6 +698,147 @@ class _SettingsView extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _CategoriesPage extends StatefulWidget {
+  const _CategoriesPage({required this.controller});
+
+  final RadioAppController controller;
+
+  @override
+  State<_CategoriesPage> createState() => _CategoriesPageState();
+}
+
+class _CategoriesPageState extends State<_CategoriesPage> {
+  late final List<TextEditingController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    final categories = widget.controller.favoriteCategories.isEmpty
+        ? const <String>['Favorites']
+        : widget.controller.favoriteCategories;
+    _controllers = categories
+        .map((category) => TextEditingController(text: category))
+        .toList(growable: true);
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addCategory() {
+    setState(() {
+      _controllers.add(TextEditingController());
+    });
+  }
+
+  Future<void> _saveAndClose() async {
+    final values = _controllers.map((controller) => controller.text).toList();
+    await widget.controller.setFavoriteCategories(values);
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return _Shell(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Categories',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: _saveAndClose,
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ListView(
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Add as many categories as you like. Only the first 3 will be visible as tabs on the bottom.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.white70,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...List<Widget>.generate(_controllers.length, (
+                              index,
+                            ) {
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: index == _controllers.length - 1
+                                      ? 0
+                                      : 12,
+                                ),
+                                child: TextField(
+                                  controller: _controllers[index],
+                                  textInputAction:
+                                      index == _controllers.length - 1
+                                      ? TextInputAction.done
+                                      : TextInputAction.next,
+                                  decoration: InputDecoration(
+                                    labelText: 'Category ${index + 1}',
+                                    hintText: index == 0
+                                        ? 'Favorites'
+                                        : 'New category',
+                                  ),
+                                ),
+                              );
+                            }),
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              onPressed: _addCategory,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('Add category'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -973,7 +1209,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Discover countries',
+                      'Station countries',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -1717,6 +1953,28 @@ String _selectedCountriesSummary(List<String> selectedCountryCodes) {
 
   final names = selectedOptions.map((option) => option.name).toList();
   return names.join(', ');
+}
+
+String _favoriteCategoriesSummary(List<String> categories) {
+  final normalized = categories
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
+  if (normalized.isEmpty) {
+    return 'Favorites';
+  }
+  return normalized.join(', ');
+}
+
+List<String> _visibleCategoryNames(List<String> categories) {
+  final normalized = categories
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
+  if (normalized.isEmpty) {
+    return const <String>['Favorites'];
+  }
+  return normalized.take(3).toList(growable: false);
 }
 
 List<_CountryOption> _countryOptionsForCodes(List<String> countryCodes) {
