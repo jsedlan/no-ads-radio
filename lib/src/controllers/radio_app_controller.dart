@@ -456,29 +456,13 @@ class RadioAppController extends ChangeNotifier {
   Future<void> setShowStationIcon(bool value) async {
     showStationIcon = value;
     notifyListeners();
-    await _settingsStore.saveSettings(
-      AppSettings(
-        showStationIcon: value,
-        circleThroughFavorites: circleThroughFavorites,
-        countryCodes: countryCodes,
-        manualStations: manualStations,
-        favoriteCategories: favoriteCategories,
-      ),
-    );
+    await _saveSettings();
   }
 
   Future<void> setCircleThroughFavorites(bool value) async {
     circleThroughFavorites = value;
     notifyListeners();
-    await _settingsStore.saveSettings(
-      AppSettings(
-        showStationIcon: showStationIcon,
-        circleThroughFavorites: value,
-        countryCodes: countryCodes,
-        manualStations: manualStations,
-        favoriteCategories: favoriteCategories,
-      ),
-    );
+    await _saveSettings();
   }
 
   Future<void> setCountryCodes(List<String> values) async {
@@ -490,15 +474,7 @@ class RadioAppController extends ChangeNotifier {
           .toList(growable: false),
     );
     notifyListeners();
-    await _settingsStore.saveSettings(
-      AppSettings(
-        showStationIcon: showStationIcon,
-        circleThroughFavorites: circleThroughFavorites,
-        countryCodes: countryCodes,
-        manualStations: manualStations,
-        favoriteCategories: favoriteCategories,
-      ),
-    );
+    await _saveSettings();
   }
 
   Future<void> setFavoriteCategories(List<String> values) async {
@@ -516,15 +492,7 @@ class RadioAppController extends ChangeNotifier {
     );
     _syncFavoriteCategoriesWithSavedData();
     notifyListeners();
-    await _settingsStore.saveSettings(
-      AppSettings(
-        showStationIcon: showStationIcon,
-        circleThroughFavorites: circleThroughFavorites,
-        countryCodes: countryCodes,
-        manualStations: manualStations,
-        favoriteCategories: favoriteCategories,
-      ),
-    );
+    await _saveSettings();
     await _favoritesStore.saveFavorites(favoritesByCategory);
   }
 
@@ -571,15 +539,7 @@ class RadioAppController extends ChangeNotifier {
     ]);
     discoverStations = await _loadDiscoverStations();
     notifyListeners();
-    await _settingsStore.saveSettings(
-      AppSettings(
-        showStationIcon: showStationIcon,
-        circleThroughFavorites: circleThroughFavorites,
-        countryCodes: countryCodes,
-        manualStations: manualStations,
-        favoriteCategories: favoriteCategories,
-      ),
-    );
+    await _saveSettings();
   }
 
   Future<void> removeManualStation(String stationUuid) async {
@@ -622,6 +582,10 @@ class RadioAppController extends ChangeNotifier {
     discoverStations = await _loadDiscoverStations();
     notifyListeners();
     await _favoritesStore.saveFavorites(favoritesByCategory);
+    await _saveSettings();
+  }
+
+  Future<void> _saveSettings() async {
     await _settingsStore.saveSettings(
       AppSettings(
         showStationIcon: showStationIcon,
