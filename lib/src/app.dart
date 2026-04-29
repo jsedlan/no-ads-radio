@@ -109,7 +109,9 @@ class _RadioHomePageState extends State<RadioHomePage> {
         }
 
         return _Shell(
+          bottomBar: _PlayerBar(controller: controller),
           child: SafeArea(
+            bottom: false,
             child: Column(
               children: [
                 _Header(controller: controller),
@@ -140,7 +142,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 60),
                     child: IndexedStack(
                       index: selectedIndex,
                       children: [
@@ -168,11 +170,6 @@ class _RadioHomePageState extends State<RadioHomePage> {
                     ),
                   ),
                 ),
-                if (controller.currentStation != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: _PlayerBar(controller: controller),
-                  ),
               ],
             ),
           ),
@@ -183,9 +180,10 @@ class _RadioHomePageState extends State<RadioHomePage> {
 }
 
 class _Shell extends StatelessWidget {
-  const _Shell({required this.child});
+  const _Shell({required this.child, this.bottomBar});
 
   final Widget child;
+  final Widget? bottomBar;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +195,11 @@ class _Shell extends StatelessWidget {
           colors: [Color(0xFF0D1117), Color(0xFF111827), Color(0xFF1A1025)],
         ),
       ),
-      child: Scaffold(backgroundColor: Colors.transparent, body: child),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: child,
+        bottomNavigationBar: bottomBar,
+      ),
     );
   }
 }
@@ -561,44 +563,52 @@ class _PlayerBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final station = controller.currentStation;
-    if (station == null) {
-      return const SizedBox.shrink();
-    }
-
     final playback = controller.playback;
 
-    return Card(
+    return Material(
       color: Colors.black,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
-        child: Row(
-          children: [
-            if (controller.showStationIcon) ...[
-              SizedBox.square(
-                dimension: 36,
-                child: _StationArtwork(station: station),
-              ),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              child: _PlayerBarText(
-                station: station,
-                playback: playback,
-                playbackStalled: controller.playbackStalled,
-                playbackStallReason: controller.playbackStallReason,
-                sleepTimerRemaining: controller.sleepTimerRemaining,
-                theme: theme,
-              ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 56,
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+            child: Row(
+              children: [
+                if (station != null && controller.showStationIcon) ...[
+                  SizedBox.square(
+                    dimension: 36,
+                    child: _StationArtwork(station: station),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: station == null
+                      ? const SizedBox.shrink()
+                      : _PlayerBarText(
+                          station: station,
+                          playback: playback,
+                          playbackStalled: controller.playbackStalled,
+                          playbackStallReason: controller.playbackStallReason,
+                          sleepTimerRemaining: controller.sleepTimerRemaining,
+                          theme: theme,
+                        ),
+                ),
+                const SizedBox(width: 8),
+                ..._playerBarActions(playback, hasStation: station != null),
+              ],
             ),
-            const SizedBox(width: 8),
-            ..._playerBarActions(playback),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  List<Widget> _playerBarActions(PlaybackSnapshot playback) {
+  List<Widget> _playerBarActions(
+    PlaybackSnapshot playback, {
+    required bool hasStation,
+  }) {
     return <Widget>[
       if (playback.isLoading)
         const SizedBox(
@@ -609,29 +619,32 @@ class _PlayerBar extends StatelessWidget {
       else
         IconButton.filledTonal(
           visualDensity: VisualDensity.compact,
-          onPressed: playback.isPlaying
+          onPressed: !hasStation
+              ? null
+              : playback.isPlaying
               ? controller.pausePlayback
               : controller.resumePlayback,
           icon: Icon(
             playback.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
           ),
         ),
-      _SleepTimerButton(controller: controller),
+      _SleepTimerButton(controller: controller, enabled: hasStation),
       IconButton(
         visualDensity: VisualDensity.compact,
-        onPressed: controller.stopPlayback,
-        icon: const Icon(Icons.close_rounded),
+        onPressed: hasStation ? controller.stopPlayback : null,
+        icon: const Icon(Icons.stop_rounded),
       ),
     ];
   }
 }
 
 class _SleepTimerButton extends StatelessWidget {
-  const _SleepTimerButton({required this.controller});
+  const _SleepTimerButton({required this.controller, this.enabled = true});
 
   static const int _customSleepTimerValue = -1;
 
   final RadioAppController controller;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -643,31 +656,40 @@ class _SleepTimerButton extends StatelessWidget {
           : 'Sleep timer',
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       padding: EdgeInsets.zero,
+      enabled: enabled,
       icon: Badge(
         isLabelVisible: active,
         smallSize: 8,
         child: Icon(
           active ? Icons.timer_rounded : Icons.timer_outlined,
-          color: active ? Theme.of(context).colorScheme.primary : null,
+          color: !enabled
+              ? Theme.of(context).disabledColor
+              : active
+              ? Theme.of(context).colorScheme.primary
+              : null,
         ),
       ),
       color: const Color(0xFF111A24),
-      onSelected: (minutes) async {
-        if (minutes == _customSleepTimerValue) {
-          final customDuration = await _showCustomSleepTimerDialog(context);
-          if (customDuration != null && context.mounted) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              controller.setSleepTimer(customDuration);
-            });
-          }
-          return;
-        }
-        if (minutes <= 0) {
-          controller.cancelSleepTimer();
-          return;
-        }
-        controller.setSleepTimer(Duration(minutes: minutes));
-      },
+      onSelected: enabled
+          ? (minutes) async {
+              if (minutes == _customSleepTimerValue) {
+                final customDuration = await _showCustomSleepTimerDialog(
+                  context,
+                );
+                if (customDuration != null && context.mounted) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    controller.setSleepTimer(customDuration);
+                  });
+                }
+                return;
+              }
+              if (minutes <= 0) {
+                controller.cancelSleepTimer();
+                return;
+              }
+              controller.setSleepTimer(Duration(minutes: minutes));
+            }
+          : null,
       itemBuilder: (context) => <PopupMenuEntry<int>>[
         PopupMenuItem<int>(value: 0, enabled: active, child: const Text('Off')),
         const PopupMenuDivider(),
