@@ -130,6 +130,81 @@ void main() {
     controller.dispose();
   });
 
+  test('controller reorders favorites and persists the order', () async {
+    final favoritesStore = InMemoryFavoritesStore();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: favoritesStore,
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+    final categoryId = controller.activeFavoriteCategoryId;
+
+    await controller.toggleFavorite(controller.discoverStations[0]);
+    await controller.toggleFavorite(controller.discoverStations[1]);
+    await controller.toggleFavorite(controller.discoverStations[2]);
+
+    expect(
+      controller
+          .favoritesForCategory(categoryId)
+          .map((station) => station.stationUuid),
+      <String>['station-2', 'station-1', 'station-0'],
+    );
+
+    await controller.reorderFavorites(
+      categoryId: categoryId,
+      oldIndex: 0,
+      newIndex: 3,
+    );
+
+    expect(
+      controller
+          .favoritesForCategory(categoryId)
+          .map((station) => station.stationUuid),
+      <String>['station-1', 'station-0', 'station-2'],
+    );
+    expect(
+      (await favoritesStore.loadFavorites())[categoryId]!.map(
+        (station) => station.stationUuid,
+      ),
+      <String>['station-1', 'station-0', 'station-2'],
+    );
+
+    controller.dispose();
+  });
+
+  test('favorite check without category searches all categories', () async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+    await controller.setFavoriteCategories(<String>['Favorites', 'Other']);
+    final favoritesCategoryId = controller.favoriteCategories[0].id;
+    final otherCategoryId = controller.favoriteCategories[1].id;
+    final station = controller.discoverStations.first;
+
+    await controller.toggleFavorite(station, categoryId: otherCategoryId);
+
+    expect(controller.isFavorite(station.stationUuid), isTrue);
+    expect(
+      controller.isFavorite(
+        station.stationUuid,
+        categoryId: favoritesCategoryId,
+      ),
+      isFalse,
+    );
+    expect(
+      controller.isFavorite(station.stationUuid, categoryId: otherCategoryId),
+      isTrue,
+    );
+
+    controller.dispose();
+  });
+
   testWidgets('shows offline badge when connectivity is down', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),

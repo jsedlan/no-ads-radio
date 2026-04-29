@@ -385,7 +385,54 @@ class RadioAppController extends ChangeNotifier {
     }
   }
 
+  Future<void> reorderFavorites({
+    required String categoryId,
+    required int oldIndex,
+    required int newIndex,
+  }) async {
+    final targetCategory = _normalizedFavoriteCategoryId(categoryId);
+    final currentFavorites = List<RadioStation>.from(
+      favoritesForCategory(targetCategory),
+    );
+    if (oldIndex < 0 ||
+        oldIndex >= currentFavorites.length ||
+        newIndex < 0 ||
+        newIndex > currentFavorites.length) {
+      return;
+    }
+
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    if (oldIndex == newIndex) {
+      return;
+    }
+
+    final movedStation = currentFavorites.removeAt(oldIndex);
+    currentFavorites.insert(newIndex, movedStation);
+    favoritesByCategory = _withCategoryFavorites(
+      targetCategory,
+      currentFavorites,
+    );
+    notifyListeners();
+
+    try {
+      await _favoritesStore.saveFavorites(favoritesByCategory);
+    } catch (error) {
+      favoritesError = _errorMessage(error);
+      notifyListeners();
+    }
+  }
+
   bool isFavorite(String stationUuid, {String? categoryId}) {
+    if (categoryId == null) {
+      return favoriteCategories.any(
+        (category) => favoritesForCategory(
+          category.id,
+        ).any((station) => station.stationUuid == stationUuid),
+      );
+    }
+
     return favoritesForCategory(
       _normalizedFavoriteCategoryId(categoryId),
     ).any((station) => station.stationUuid == stationUuid);

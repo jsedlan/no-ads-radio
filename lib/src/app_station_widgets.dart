@@ -98,6 +98,7 @@ class _StationList extends StatelessWidget {
     this.isLoading = false,
     this.draggableStations = false,
     this.onDragStateChanged,
+    this.onReorder,
   });
 
   final RadioAppController controller;
@@ -106,21 +107,28 @@ class _StationList extends StatelessWidget {
   final bool isLoading;
   final bool draggableStations;
   final ValueChanged<bool>? onDragStateChanged;
+  final ReorderCallback? onReorder;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      shrinkWrap: true,
-      children: [
-        if (isLoading && stations.isEmpty)
-          const Padding(
+    if (isLoading && stations.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(child: CircularProgressIndicator()),
-          )
-        else if (stations.isEmpty)
+          ),
+        ],
+      );
+    }
+
+    if (stations.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
@@ -130,11 +138,30 @@ class _StationList extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-          )
-        else
-          ...stations.map(
-            (station) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+          ),
+          const SizedBox(height: 24),
+        ],
+      );
+    }
+
+    final reorderCallback = onReorder;
+    if (reorderCallback != null) {
+      return ReorderableListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        itemCount: stations.length,
+        onReorder: reorderCallback,
+        proxyDecorator: (child, index, animation) {
+          return Material(color: Colors.transparent, child: child);
+        },
+        footer: const SizedBox(height: 24),
+        itemBuilder: (context, index) {
+          final station = stations[index];
+          return Padding(
+            key: ValueKey(station.stationUuid),
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ReorderableDelayedDragStartListener(
+              index: index,
               child: _StationTile(
                 station: station,
                 controller: controller,
@@ -142,9 +169,29 @@ class _StationList extends StatelessWidget {
                 onDragStateChanged: onDragStateChanged,
               ),
             ),
+          );
+        },
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: stations.length + 1,
+      itemBuilder: (context, index) {
+        if (index == stations.length) {
+          return const SizedBox(height: 24);
+        }
+        final station = stations[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _StationTile(
+            station: station,
+            controller: controller,
+            draggable: draggableStations,
+            onDragStateChanged: onDragStateChanged,
           ),
-        const SizedBox(height: 24),
-      ],
+        );
+      },
     );
   }
 }

@@ -523,6 +523,13 @@ class _FavoritesTab extends StatelessWidget {
       stations: controller.favoritesForCategory(category.id),
       emptyMessage:
           'No favorites in ${category.name} yet. Save stations from Stations to build this category.',
+      onReorder: (oldIndex, newIndex) {
+        controller.reorderFavorites(
+          categoryId: category.id,
+          oldIndex: oldIndex,
+          newIndex: newIndex,
+        );
+      },
     );
   }
 }
