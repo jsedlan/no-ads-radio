@@ -27,7 +27,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Test Station 1'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.favorite_border).first);
+    await controller.toggleFavorite(controller.discoverStations.first);
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Favorites'));

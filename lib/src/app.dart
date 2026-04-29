@@ -109,135 +109,35 @@ class _RadioHomePageState extends State<RadioHomePage> {
         }
 
         return _Shell(
-          bottomNavigationBar: SizedBox(
-            height: 80,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Stack(
-                  children: [
-                    NavigationBar(
-                      backgroundColor: const Color(0xFF0F1620),
-                      selectedIndex: selectedIndex,
-                      onDestinationSelected: controller.selectTab,
-                      destinations: [
-                        const NavigationDestination(
-                          icon: Icon(Icons.explore_outlined),
-                          selectedIcon: Icon(Icons.explore),
-                          label: 'Stations',
-                        ),
-                        ...visibleCategories.map(
-                          (category) => NavigationDestination(
-                            icon: const Icon(Icons.favorite_border),
-                            selectedIcon: const Icon(Icons.favorite),
-                            label: category.name,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_isDraggingDiscoverStation)
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        width:
-                            constraints.maxWidth *
-                            (visibleCategories.length / totalTabCount),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            children: List<Widget>.generate(
-                              visibleCategories.length,
-                              (index) {
-                                final category = visibleCategories[index];
-                                return Expanded(
-                                  child: Padding(
-                                    padding: EdgeInsets.only(
-                                      left: index == 0 ? 0 : 4,
-                                      right:
-                                          index == visibleCategories.length - 1
-                                          ? 0
-                                          : 4,
-                                    ),
-                                    child: DragTarget<RadioStation>(
-                                      onWillAcceptWithDetails: (details) {
-                                        final canAccept = !controller
-                                            .isFavorite(
-                                              details.data.stationUuid,
-                                              categoryId: category.id,
-                                            );
-                                        setState(() {
-                                          _favoriteDropTargetIndex = canAccept
-                                              ? index
-                                              : null;
-                                        });
-                                        return canAccept;
-                                      },
-                                      onLeave: (_) {
-                                        setState(() {
-                                          _favoriteDropTargetIndex = null;
-                                        });
-                                      },
-                                      onAcceptWithDetails: (details) {
-                                        setState(() {
-                                          _favoriteDropTargetIndex = null;
-                                          _isDraggingDiscoverStation = false;
-                                        });
-                                        _handleFavoriteDrop(
-                                          details.data,
-                                          index,
-                                        );
-                                      },
-                                      builder:
-                                          (
-                                            context,
-                                            candidateData,
-                                            rejectedData,
-                                          ) {
-                                            final isActive =
-                                                _favoriteDropTargetIndex ==
-                                                    index &&
-                                                candidateData.isNotEmpty;
-                                            return AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 120,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: isActive
-                                                    ? const Color(
-                                                        0xFFFF8A5B,
-                                                      ).withValues(alpha: 0.18)
-                                                    : Colors.transparent,
-                                                borderRadius:
-                                                    BorderRadius.circular(24),
-                                                border: Border.all(
-                                                  color: isActive
-                                                      ? const Color(0xFFFF8A5B)
-                                                      : Colors.transparent,
-                                                  width: 2,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
           child: SafeArea(
             child: Column(
               children: [
                 _Header(controller: controller),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: SizedBox(
+                    height: 80,
+                    child: _TopTabBar(
+                      controller: controller,
+                      selectedIndex: selectedIndex,
+                      visibleCategories: visibleCategories,
+                      isDraggingDiscoverStation: _isDraggingDiscoverStation,
+                      favoriteDropTargetIndex: _favoriteDropTargetIndex,
+                      onFavoriteDropTargetChanged: (index) {
+                        setState(() {
+                          _favoriteDropTargetIndex = index;
+                        });
+                      },
+                      onFavoriteDropAccepted: (station, categoryIndex) {
+                        setState(() {
+                          _favoriteDropTargetIndex = null;
+                          _isDraggingDiscoverStation = false;
+                        });
+                        _handleFavoriteDrop(station, categoryIndex);
+                      },
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -283,10 +183,9 @@ class _RadioHomePageState extends State<RadioHomePage> {
 }
 
 class _Shell extends StatelessWidget {
-  const _Shell({required this.child, this.bottomNavigationBar});
+  const _Shell({required this.child});
 
   final Widget child;
-  final Widget? bottomNavigationBar;
 
   @override
   Widget build(BuildContext context) {
@@ -298,11 +197,130 @@ class _Shell extends StatelessWidget {
           colors: [Color(0xFF0D1117), Color(0xFF111827), Color(0xFF1A1025)],
         ),
       ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        bottomNavigationBar: bottomNavigationBar,
-        body: child,
-      ),
+      child: Scaffold(backgroundColor: Colors.transparent, body: child),
+    );
+  }
+}
+
+class _TopTabBar extends StatelessWidget {
+  const _TopTabBar({
+    required this.controller,
+    required this.selectedIndex,
+    required this.visibleCategories,
+    required this.isDraggingDiscoverStation,
+    required this.favoriteDropTargetIndex,
+    required this.onFavoriteDropTargetChanged,
+    required this.onFavoriteDropAccepted,
+  });
+
+  final RadioAppController controller;
+  final int selectedIndex;
+  final List<FavoriteCategory> visibleCategories;
+  final bool isDraggingDiscoverStation;
+  final int? favoriteDropTargetIndex;
+  final ValueChanged<int?> onFavoriteDropTargetChanged;
+  final void Function(RadioStation station, int categoryIndex)
+  onFavoriteDropAccepted;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalTabCount = 1 + visibleCategories.length;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Stack(
+          children: [
+            NavigationBar(
+              backgroundColor: const Color(0xFF0F1620),
+              selectedIndex: selectedIndex,
+              onDestinationSelected: controller.selectTab,
+              destinations: [
+                const NavigationDestination(
+                  icon: Icon(Icons.explore_outlined),
+                  selectedIcon: Icon(Icons.explore),
+                  label: 'Stations',
+                ),
+                ...visibleCategories.map(
+                  (category) => NavigationDestination(
+                    icon: const Icon(Icons.favorite_border),
+                    selectedIcon: const Icon(Icons.favorite),
+                    label: category.name,
+                  ),
+                ),
+              ],
+            ),
+            if (isDraggingDiscoverStation)
+              Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width:
+                    constraints.maxWidth *
+                    (visibleCategories.length / totalTabCount),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: List<Widget>.generate(visibleCategories.length, (
+                      index,
+                    ) {
+                      final category = visibleCategories[index];
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: index == 0 ? 0 : 4,
+                            right: index == visibleCategories.length - 1
+                                ? 0
+                                : 4,
+                          ),
+                          child: DragTarget<RadioStation>(
+                            onWillAcceptWithDetails: (details) {
+                              final canAccept = !controller.isFavorite(
+                                details.data.stationUuid,
+                                categoryId: category.id,
+                              );
+                              onFavoriteDropTargetChanged(
+                                canAccept ? index : null,
+                              );
+                              return canAccept;
+                            },
+                            onLeave: (_) => onFavoriteDropTargetChanged(null),
+                            onAcceptWithDetails: (details) {
+                              onFavoriteDropAccepted(details.data, index);
+                            },
+                            builder: (context, candidateData, rejectedData) {
+                              final isActive =
+                                  favoriteDropTargetIndex == index &&
+                                  candidateData.isNotEmpty;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 120),
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? const Color(
+                                          0xFFFF8A5B,
+                                        ).withValues(alpha: 0.18)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: isActive
+                                        ? const Color(0xFFFF8A5B)
+                                        : Colors.transparent,
+                                    width: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
