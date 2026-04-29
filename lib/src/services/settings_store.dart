@@ -9,6 +9,7 @@ class AppSettings {
     this.circleThroughFavorites = true,
     this.countryCodes = const <String>[],
     this.manualStations = const <RadioStation>[],
+    this.recentlyPlayedStations = const <RadioStation>[],
     this.favoriteCategories = const <FavoriteCategory>[
       FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
     ],
@@ -18,6 +19,7 @@ class AppSettings {
   final bool circleThroughFavorites;
   final List<String> countryCodes;
   final List<RadioStation> manualStations;
+  final List<RadioStation> recentlyPlayedStations;
   final List<FavoriteCategory> favoriteCategories;
 
   AppSettings copyWith({
@@ -25,6 +27,7 @@ class AppSettings {
     bool? circleThroughFavorites,
     List<String>? countryCodes,
     List<RadioStation>? manualStations,
+    List<RadioStation>? recentlyPlayedStations,
     List<FavoriteCategory>? favoriteCategories,
   }) {
     return AppSettings(
@@ -33,6 +36,8 @@ class AppSettings {
           circleThroughFavorites ?? this.circleThroughFavorites,
       countryCodes: countryCodes ?? this.countryCodes,
       manualStations: manualStations ?? this.manualStations,
+      recentlyPlayedStations:
+          recentlyPlayedStations ?? this.recentlyPlayedStations,
       favoriteCategories: favoriteCategories ?? this.favoriteCategories,
     );
   }
@@ -50,6 +55,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _circleThroughFavoritesKey = 'circle_through_favorites';
   static const String _countryCodesKey = 'country_codes';
   static const String _manualStationsKey = 'manual_stations';
+  static const String _recentlyPlayedStationsKey = 'recently_played_stations';
   static const String _favoriteCategoriesKey = 'favorite_categories';
 
   final SharedPreferences _preferences;
@@ -68,6 +74,11 @@ class SharedPreferencesSettingsStore implements SettingsStore {
         (_preferences.getStringList(_manualStationsKey) ?? const <String>[])
             .map(RadioStation.fromStorage),
       ),
+      recentlyPlayedStations: List<RadioStation>.unmodifiable(
+        (_preferences.getStringList(_recentlyPlayedStationsKey) ??
+                const <String>[])
+            .map(RadioStation.fromStorage),
+      ),
       favoriteCategories: favoriteCategories,
     );
   }
@@ -83,6 +94,12 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     await _preferences.setStringList(
       _manualStationsKey,
       settings.manualStations.map((station) => station.toStorage()).toList(),
+    );
+    await _preferences.setStringList(
+      _recentlyPlayedStationsKey,
+      settings.recentlyPlayedStations
+          .map((station) => station.toStorage())
+          .toList(),
     );
     await _preferences.setStringList(
       _favoriteCategoriesKey,

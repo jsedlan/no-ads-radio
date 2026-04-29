@@ -42,6 +42,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Show station icon'), findsOneWidget);
+    expect(find.text('Recently played'), findsOneWidget);
   });
 
   test(
@@ -75,6 +76,58 @@ void main() {
 
     final reloaded = await settingsStore.loadSettings();
     expect(reloaded.showStationIcon, isTrue);
+  });
+
+  test(
+    'controller records recently played stations after playback starts',
+    () async {
+      final settingsStore = InMemorySettingsStore();
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: settingsStore,
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+      );
+      final firstStation = controller.discoverStations.first;
+      final secondStation = controller.discoverStations[1];
+
+      await controller.playStation(firstStation);
+      await controller.playStation(secondStation);
+      await controller.playStation(firstStation);
+
+      expect(controller.recentlyPlayedStations, hasLength(2));
+      expect(controller.recentlyPlayedStations.first.stationUuid, 'station-0');
+      expect(controller.recentlyPlayedStations.last.stationUuid, 'station-1');
+
+      final reloaded = await settingsStore.loadSettings();
+      expect(reloaded.recentlyPlayedStations, hasLength(2));
+      expect(reloaded.recentlyPlayedStations.first.stationUuid, 'station-0');
+
+      controller.dispose();
+    },
+  );
+
+  test('controller clears recently played stations', () async {
+    final settingsStore = InMemorySettingsStore();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await controller.playStation(controller.discoverStations.first);
+    await controller.clearRecentlyPlayed();
+
+    expect(controller.recentlyPlayedStations, isEmpty);
+    expect(
+      (await settingsStore.loadSettings()).recentlyPlayedStations,
+      isEmpty,
+    );
+
+    controller.dispose();
   });
 
   testWidgets('shows offline badge when connectivity is down', (tester) async {

@@ -73,10 +73,12 @@ class RadioAppController extends ChangeNotifier {
     Duration(minutes: 30),
     Duration(minutes: 45),
   ];
+  static const int _recentlyPlayedLimit = 50;
 
   List<RadioStation> discoverStations = const <RadioStation>[];
   List<RadioStation> searchResults = const <RadioStation>[];
   List<RadioStation> manualStations = const <RadioStation>[];
+  List<RadioStation> recentlyPlayedStations = const <RadioStation>[];
   Map<String, List<RadioStation>> favoritesByCategory =
       const <String, List<RadioStation>>{};
 
@@ -166,6 +168,7 @@ class RadioAppController extends ChangeNotifier {
       circleThroughFavorites = settings.circleThroughFavorites;
       countryCodes = settings.countryCodes;
       manualStations = settings.manualStations;
+      recentlyPlayedStations = settings.recentlyPlayedStations;
       favoriteCategories = settings.favoriteCategories.isEmpty
           ? const <FavoriteCategory>[
               FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
@@ -424,6 +427,9 @@ class RadioAppController extends ChangeNotifier {
         station,
         fromInternetRecoveryRetry: fromInternetRecoveryRetry,
       );
+      if (!playback.hasError) {
+        await _recordRecentlyPlayed(station);
+      }
     } catch (error) {
       playback = PlaybackSnapshot(
         status: PlaybackStatus.error,
@@ -641,6 +647,29 @@ class RadioAppController extends ChangeNotifier {
     await _replaceManualStations(const <RadioStation>[]);
   }
 
+  Future<void> clearRecentlyPlayed() async {
+    if (recentlyPlayedStations.isEmpty) {
+      return;
+    }
+
+    recentlyPlayedStations = const <RadioStation>[];
+    notifyListeners();
+    await _saveSettings();
+  }
+
+  Future<void> _recordRecentlyPlayed(RadioStation station) async {
+    final nextStations = <RadioStation>[
+      station,
+      ...recentlyPlayedStations.where(
+        (item) => item.stationUuid != station.stationUuid,
+      ),
+    ].take(_recentlyPlayedLimit).toList(growable: false);
+
+    recentlyPlayedStations = List<RadioStation>.unmodifiable(nextStations);
+    notifyListeners();
+    await _saveSettings();
+  }
+
   Future<void> _replaceManualStations(List<RadioStation> stations) async {
     final removedStationIds = manualStations
         .map((station) => station.stationUuid)
@@ -680,6 +709,7 @@ class RadioAppController extends ChangeNotifier {
         circleThroughFavorites: circleThroughFavorites,
         countryCodes: countryCodes,
         manualStations: manualStations,
+        recentlyPlayedStations: recentlyPlayedStations,
         favoriteCategories: favoriteCategories,
       ),
     );
