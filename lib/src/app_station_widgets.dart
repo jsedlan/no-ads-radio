@@ -157,18 +157,23 @@ class _StationList extends StatelessWidget {
         footer: const SizedBox(height: 24),
         itemBuilder: (context, index) {
           final station = stations[index];
-          return Padding(
+          return Column(
             key: ValueKey(station.stationUuid),
-            padding: const EdgeInsets.only(bottom: 12),
-            child: ReorderableDelayedDragStartListener(
-              index: index,
-              child: _StationTile(
-                station: station,
-                controller: controller,
-                draggable: draggableStations,
-                onDragStateChanged: onDragStateChanged,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: ReorderableDelayedDragStartListener(
+                  index: index,
+                  child: _StationTile(
+                    station: station,
+                    controller: controller,
+                    draggable: draggableStations,
+                    onDragStateChanged: onDragStateChanged,
+                  ),
+                ),
               ),
-            ),
+              const _StationDivider(),
+            ],
           );
         },
       );
@@ -182,16 +187,34 @@ class _StationList extends StatelessWidget {
           return const SizedBox(height: 24);
         }
         final station = stations[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _StationTile(
-            station: station,
-            controller: controller,
-            draggable: draggableStations,
-            onDragStateChanged: onDragStateChanged,
-          ),
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _StationTile(
+                station: station,
+                controller: controller,
+                draggable: draggableStations,
+                onDragStateChanged: onDragStateChanged,
+              ),
+            ),
+            const _StationDivider(),
+          ],
         );
       },
+    );
+  }
+}
+
+class _StationDivider extends StatelessWidget {
+  const _StationDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.only(bottom: 6),
+      color: Colors.white.withValues(alpha: 0.18),
     );
   }
 }
@@ -287,16 +310,19 @@ class _StationTile extends StatelessWidget {
     final isFavorite = controller.isFavorite(station.stationUuid);
 
     final tile = Card(
+      margin: EdgeInsets.zero,
       color: isCurrent ? const Color(0xFF1A2736) : null,
       child: ListTile(
         onTap: () => controller.playStation(station),
         contentPadding: const EdgeInsets.only(
-          left: 4,
+          left: 8,
           right: 0,
-          top: 8,
-          bottom: 8,
+          top: 0,
+          bottom: 0,
         ),
-        minLeadingWidth: controller.showStationIcon ? 44 : 0,
+        minTileHeight: controller.showStationIcon ? 48 : 42,
+        minVerticalPadding: 0,
+        minLeadingWidth: controller.showStationIcon ? 40 : 0,
         horizontalTitleGap: controller.showStationIcon ? 8 : 0,
         leading: controller.showStationIcon
             ? _StationArtwork(station: station)
@@ -307,23 +333,18 @@ class _StationTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: stationTitleStyle,
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            [
-              station.displayLocation,
-              if (station.displayLanguage.isNotEmpty) station.displayLanguage,
-              if (station.codec.isNotEmpty || station.bitrate > 0)
-                '${station.codec}${station.bitrate > 0 ? ' • ${station.bitrate} kbps' : ''}',
-              if (station.displayTags.isNotEmpty) station.displayTags,
-            ].where((value) => value.trim().isNotEmpty).join('\n'),
-            style: stationSubtitleStyle,
-          ),
+        subtitle: Text(
+          _stationSubtitle(station),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: stationSubtitleStyle,
         ),
-        isThreeLine: true,
+        dense: true,
+        isThreeLine: false,
         trailing: IconButton(
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          visualDensity: VisualDensity.compact,
           tooltip: isFavorite ? 'Remove favorite' : 'Save favorite',
           onPressed: () => controller.toggleFavorite(station),
           icon: Icon(
@@ -365,6 +386,19 @@ class _StationTile extends StatelessWidget {
       child: tile,
     );
   }
+}
+
+String _stationSubtitle(RadioStation station) {
+  final country = station.country.trim().isNotEmpty
+      ? station.country.trim()
+      : station.countryCode.trim();
+  return [
+    country,
+    ...station.displayTags
+        .split(' • ')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty),
+  ].where((value) => value.trim().isNotEmpty).join(' • ');
 }
 
 class _StationDragFeedback extends StatelessWidget {

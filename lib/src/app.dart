@@ -142,7 +142,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 60),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: IndexedStack(
                       index: selectedIndex,
                       children: [
@@ -808,27 +808,21 @@ class _PlayerBarText extends StatelessWidget {
       ),
     );
 
-    final status = playbackStalled
-        ? playbackStallReason == PlaybackStallReason.internetOutage
-              ? 'Internet connection lost'
-              : playbackStallReason == PlaybackStallReason.streamFailure
-              ? 'Stream stopped responding'
-              : 'Playback stalled'
-        : playback.hasError
-        ? playback.message ?? 'Playback failed'
-        : playback.isLoading
-        ? 'Buffering stream...'
-        : playback.isPlaying && playback.nowPlaying?.displayTitle != null
-        ? playback.nowPlaying!.displayTitle!
-        : playback.isPlaying
-        ? 'Now playing'
-        : 'Paused';
+    final status = _playerBarStatus(
+      playback: playback,
+      playbackStalled: playbackStalled,
+      playbackStallReason: playbackStallReason,
+      stationName: station.displayName,
+    );
     final metadata = playback.isPlaying
-        ? _cleanNowPlayingMetadata(playback.nowPlaying?.stationName)
+        ? _cleanNowPlayingMetadata(
+            playback.nowPlaying?.stationName,
+            stationName: station.displayName,
+          )
         : null;
     final parts = <String>[
       station.displayName,
-      status,
+      ?status,
       if (metadata != null && metadata.isNotEmpty) metadata,
       if (sleepTimerRemaining > Duration.zero)
         'Sleep timer: ${_formatSleepTimerRemaining(sleepTimerRemaining)}',
@@ -844,7 +838,35 @@ class _PlayerBarText extends StatelessWidget {
   }
 }
 
-String? _cleanNowPlayingMetadata(String? value) {
+String? _playerBarStatus({
+  required PlaybackSnapshot playback,
+  required bool playbackStalled,
+  required PlaybackStallReason? playbackStallReason,
+  required String stationName,
+}) {
+  if (playbackStalled) {
+    return playbackStallReason == PlaybackStallReason.internetOutage
+        ? 'Internet connection lost'
+        : playbackStallReason == PlaybackStallReason.streamFailure
+        ? 'Stream stopped responding'
+        : 'Playback stalled';
+  }
+  if (playback.hasError) {
+    return playback.message ?? 'Playback failed';
+  }
+  if (playback.isLoading) {
+    return 'Buffering stream...';
+  }
+  if (playback.isPlaying) {
+    return _cleanNowPlayingMetadata(
+      playback.nowPlaying?.displayTitle,
+      stationName: stationName,
+    );
+  }
+  return 'Paused';
+}
+
+String? _cleanNowPlayingMetadata(String? value, {required String stationName}) {
   final normalized = value?.trim();
   if (normalized == null || normalized.isEmpty) {
     return null;
@@ -859,7 +881,52 @@ String? _cleanNowPlayingMetadata(String? value) {
       return null;
   }
 
+  if (_isSameOrNearStationName(normalized, stationName)) {
+    return null;
+  }
+
   return normalized;
+}
+
+bool _isSameOrNearStationName(String value, String stationName) {
+  final normalizedValue = _normalizeNowPlayingText(value);
+  final normalizedStationName = _normalizeNowPlayingText(stationName);
+  if (normalizedValue.isEmpty || normalizedStationName.isEmpty) {
+    return false;
+  }
+  if (normalizedValue == normalizedStationName) {
+    return true;
+  }
+  if (_normalizeNowPlayingTokens(value) ==
+      _normalizeNowPlayingTokens(stationName)) {
+    return true;
+  }
+
+  final shorter = normalizedValue.length < normalizedStationName.length
+      ? normalizedValue
+      : normalizedStationName;
+  final longer = normalizedValue.length < normalizedStationName.length
+      ? normalizedStationName
+      : normalizedValue;
+
+  return shorter.length >= 6 && longer.contains(shorter);
+}
+
+String _normalizeNowPlayingText(String value) {
+  return value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
+}
+
+String _normalizeNowPlayingTokens(String value) {
+  final tokens =
+      value
+          .trim()
+          .toLowerCase()
+          .split(RegExp(r'[^a-z0-9]+'))
+          .where((token) => token.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+  return tokens.join('|');
 }
 
 class _ChyronText extends StatefulWidget {
