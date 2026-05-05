@@ -258,6 +258,57 @@ void main() {
     },
   );
 
+  test(
+    'controller detects a new internet outage after playback recovers',
+    () async {
+      final audioEngine = FakeAudioEngine();
+      final connectivityService = FakeConnectivityService.offline();
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: audioEngine,
+        connectivityService: connectivityService,
+        playbackStallThreshold: const Duration(milliseconds: 60),
+        playbackStallPollInterval: const Duration(milliseconds: 10),
+      );
+
+      audioEngine.emitSnapshot(
+        const PlaybackSnapshot(
+          status: PlaybackStatus.playing,
+          position: Duration.zero,
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(controller.playbackStalled, isTrue);
+      expect(
+        controller.playbackStallReason,
+        PlaybackStallReason.internetOutage,
+      );
+
+      audioEngine.emitSnapshot(
+        const PlaybackSnapshot(
+          status: PlaybackStatus.playing,
+          position: Duration(milliseconds: 500),
+        ),
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(controller.playbackStalled, isFalse);
+      expect(controller.playbackStallReason, isNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(controller.playbackStalled, isTrue);
+      expect(
+        controller.playbackStallReason,
+        PlaybackStallReason.internetOutage,
+      );
+
+      controller.dispose();
+    },
+  );
+
   test('sleep timer stops playback when it expires', () async {
     final audioEngine = FakeAudioEngine();
     final controller = await RadioAppController.bootstrap(

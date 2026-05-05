@@ -52,6 +52,15 @@ class NoAdsRadioApp extends StatelessWidget {
             borderSide: BorderSide.none,
           ),
         ),
+        navigationBarTheme: NavigationBarThemeData(
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            final selected = states.contains(WidgetState.selected);
+            return textTheme.labelSmall?.copyWith(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            );
+          }),
+        ),
       ),
       home: RadioHomePage(controller: controller),
     );
@@ -114,31 +123,24 @@ class _RadioHomePageState extends State<RadioHomePage> {
             bottom: false,
             child: Column(
               children: [
-                _Header(controller: controller),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: SizedBox(
-                    height: 80,
-                    child: _TopTabBar(
-                      controller: controller,
-                      selectedIndex: selectedIndex,
-                      visibleCategories: visibleCategories,
-                      isDraggingDiscoverStation: _isDraggingDiscoverStation,
-                      favoriteDropTargetIndex: _favoriteDropTargetIndex,
-                      onFavoriteDropTargetChanged: (index) {
-                        setState(() {
-                          _favoriteDropTargetIndex = index;
-                        });
-                      },
-                      onFavoriteDropAccepted: (station, categoryIndex) {
-                        setState(() {
-                          _favoriteDropTargetIndex = null;
-                          _isDraggingDiscoverStation = false;
-                        });
-                        _handleFavoriteDrop(station, categoryIndex);
-                      },
-                    ),
-                  ),
+                _Header(
+                  controller: controller,
+                  selectedIndex: selectedIndex,
+                  visibleCategories: visibleCategories,
+                  isDraggingDiscoverStation: _isDraggingDiscoverStation,
+                  favoriteDropTargetIndex: _favoriteDropTargetIndex,
+                  onFavoriteDropTargetChanged: (index) {
+                    setState(() {
+                      _favoriteDropTargetIndex = index;
+                    });
+                  },
+                  onFavoriteDropAccepted: (station, categoryIndex) {
+                    setState(() {
+                      _favoriteDropTargetIndex = null;
+                      _isDraggingDiscoverStation = false;
+                    });
+                    _handleFavoriteDrop(station, categoryIndex);
+                  },
                 ),
                 Expanded(
                   child: Padding(
@@ -226,111 +228,134 @@ class _TopTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalTabCount = 1 + visibleCategories.length;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Stack(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: _CompactTopTab(
+            icon: Icons.explore_outlined,
+            selectedIcon: Icons.explore,
+            label: 'Stations',
+            selected: selectedIndex == 0,
+            onTap: () => controller.selectTab(0),
+          ),
+        ),
+        ...List<Widget>.generate(visibleCategories.length, (index) {
+          final category = visibleCategories[index];
+          final tabIndex = index + 1;
+          final tab = _CompactTopTab(
+            icon: Icons.favorite_border,
+            selectedIcon: Icons.favorite,
+            label: category.name,
+            selected: selectedIndex == tabIndex,
+            highlighted:
+                isDraggingDiscoverStation && favoriteDropTargetIndex == index,
+            onTap: () => controller.selectTab(tabIndex),
+          );
+
+          final target = DragTarget<RadioStation>(
+            onWillAcceptWithDetails: (details) {
+              final canAccept = !controller.isFavorite(
+                details.data.stationUuid,
+                categoryId: category.id,
+              );
+              onFavoriteDropTargetChanged(canAccept ? index : null);
+              return canAccept;
+            },
+            onLeave: (_) => onFavoriteDropTargetChanged(null),
+            onAcceptWithDetails: (details) {
+              onFavoriteDropAccepted(details.data, index);
+            },
+            builder: (context, candidateData, rejectedData) => tab,
+          );
+
+          return Expanded(child: isDraggingDiscoverStation ? target : tab);
+        }),
+      ],
+    );
+  }
+}
+
+class _CompactTopTab extends StatelessWidget {
+  const _CompactTopTab({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.highlighted = false,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final bool highlighted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = selected ? const Color(0xFFFF8A5B) : Colors.white70;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: highlighted
+              ? const Color(0xFFFF8A5B).withValues(alpha: 0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: highlighted
+              ? Border.all(color: const Color(0xFFFF8A5B))
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            NavigationBar(
-              backgroundColor: const Color(0xFF0F1620),
-              selectedIndex: selectedIndex,
-              onDestinationSelected: controller.selectTab,
-              destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.explore_outlined),
-                  selectedIcon: Icon(Icons.explore),
-                  label: 'Stations',
-                ),
-                ...visibleCategories.map(
-                  (category) => NavigationDestination(
-                    icon: const Icon(Icons.favorite_border),
-                    selectedIcon: const Icon(Icons.favorite),
-                    label: category.name,
-                  ),
-                ),
-              ],
-            ),
-            if (isDraggingDiscoverStation)
-              Positioned(
-                top: 0,
-                right: 0,
-                bottom: 0,
-                width:
-                    constraints.maxWidth *
-                    (visibleCategories.length / totalTabCount),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                  child: Row(
-                    children: List<Widget>.generate(visibleCategories.length, (
-                      index,
-                    ) {
-                      final category = visibleCategories[index];
-                      return Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                            left: index == 0 ? 0 : 4,
-                            right: index == visibleCategories.length - 1
-                                ? 0
-                                : 4,
-                          ),
-                          child: DragTarget<RadioStation>(
-                            onWillAcceptWithDetails: (details) {
-                              final canAccept = !controller.isFavorite(
-                                details.data.stationUuid,
-                                categoryId: category.id,
-                              );
-                              onFavoriteDropTargetChanged(
-                                canAccept ? index : null,
-                              );
-                              return canAccept;
-                            },
-                            onLeave: (_) => onFavoriteDropTargetChanged(null),
-                            onAcceptWithDetails: (details) {
-                              onFavoriteDropAccepted(details.data, index);
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              final isActive =
-                                  favoriteDropTargetIndex == index &&
-                                  candidateData.isNotEmpty;
-                              return AnimatedContainer(
-                                duration: const Duration(milliseconds: 120),
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? const Color(
-                                          0xFFFF8A5B,
-                                        ).withValues(alpha: 0.18)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: isActive
-                                        ? const Color(0xFFFF8A5B)
-                                        : Colors.transparent,
-                                    width: 2,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
+            Icon(selected ? selectedIcon : icon, size: 22, color: color),
+            const SizedBox(height: 1),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 10,
+                height: 1,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: color,
               ),
+            ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
 class _Header extends StatefulWidget {
-  const _Header({required this.controller});
+  const _Header({
+    required this.controller,
+    required this.selectedIndex,
+    required this.visibleCategories,
+    required this.isDraggingDiscoverStation,
+    required this.favoriteDropTargetIndex,
+    required this.onFavoriteDropTargetChanged,
+    required this.onFavoriteDropAccepted,
+  });
 
   final RadioAppController controller;
+  final int selectedIndex;
+  final List<FavoriteCategory> visibleCategories;
+  final bool isDraggingDiscoverStation;
+  final int? favoriteDropTargetIndex;
+  final ValueChanged<int?> onFavoriteDropTargetChanged;
+  final void Function(RadioStation station, int categoryIndex)
+  onFavoriteDropAccepted;
 
   @override
   State<_Header> createState() => _HeaderState();
@@ -338,6 +363,8 @@ class _Header extends StatefulWidget {
 
 class _HeaderState extends State<_Header> {
   late final TextEditingController _discoverFilterController;
+  late final FocusNode _discoverFilterFocusNode;
+  bool _isSearchExpanded = false;
 
   RadioAppController get controller => widget.controller;
 
@@ -347,12 +374,14 @@ class _HeaderState extends State<_Header> {
     _discoverFilterController = TextEditingController(
       text: controller.discoverFilter,
     );
+    _discoverFilterFocusNode = FocusNode();
   }
 
   @override
   void didUpdateWidget(covariant _Header oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_discoverFilterController.text != controller.discoverFilter) {
+    if (!_isSearchExpanded &&
+        _discoverFilterController.text != controller.discoverFilter) {
       _discoverFilterController.value = TextEditingValue(
         text: controller.discoverFilter,
         selection: TextSelection.collapsed(
@@ -365,7 +394,62 @@ class _HeaderState extends State<_Header> {
   @override
   void dispose() {
     _discoverFilterController.dispose();
+    _discoverFilterFocusNode.dispose();
     super.dispose();
+  }
+
+  void _expandSearch() {
+    setState(() {
+      _isSearchExpanded = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _discoverFilterFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _submitSearch([String? value]) {
+    controller.setDiscoverFilter(value ?? _discoverFilterController.text);
+    controller.selectTab(0);
+    setState(() {
+      _isSearchExpanded = false;
+    });
+    _discoverFilterFocusNode.unfocus();
+  }
+
+  void _clearSearch() {
+    if (_discoverFilterController.text.isNotEmpty) {
+      _discoverFilterController.clear();
+      controller.setDiscoverFilter('');
+      return;
+    }
+
+    _discoverFilterController.clear();
+    controller.setDiscoverFilter('');
+    setState(() {
+      _isSearchExpanded = false;
+    });
+    _discoverFilterFocusNode.unfocus();
+  }
+
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _discoverFilterController,
+      focusNode: _discoverFilterFocusNode,
+      textInputAction: TextInputAction.search,
+      onSubmitted: _submitSearch,
+      decoration: InputDecoration(
+        hintText: 'Filter',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: IconButton(
+          onPressed: _clearSearch,
+          icon: const Icon(Icons.close_rounded),
+          tooltip: 'Clear filter',
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      ),
+    );
   }
 
   @override
@@ -378,103 +462,109 @@ class _HeaderState extends State<_Header> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (controller.isOffline) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: theme.colorScheme.error.withValues(alpha: 0.4),
+              if (_isSearchExpanded)
+                Expanded(
+                  child: SizedBox(height: 48, child: _buildSearchField()),
+                )
+              else ...[
+                if (controller.isOffline) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: theme.colorScheme.error.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.cloud_off_rounded,
+                          size: 16,
+                          color: theme.colorScheme.error,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Offline',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.error,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: _TopTabBar(
+                      controller: controller,
+                      selectedIndex: widget.selectedIndex,
+                      visibleCategories: widget.visibleCategories,
+                      isDraggingDiscoverStation:
+                          widget.isDraggingDiscoverStation,
+                      favoriteDropTargetIndex: widget.favoriteDropTargetIndex,
+                      onFavoriteDropTargetChanged:
+                          widget.onFavoriteDropTargetChanged,
+                      onFavoriteDropAccepted: widget.onFavoriteDropAccepted,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Transform.translate(
+                  offset: const Offset(0, -7),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.cloud_off_rounded,
-                        size: 16,
-                        color: theme.colorScheme.error,
+                      IconButton(
+                        onPressed: _expandSearch,
+                        icon: const Icon(Icons.search_rounded),
+                        tooltip: 'Filter stations',
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Offline',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.error,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      PopupMenuButton<_HeaderAction>(
+                        tooltip: 'More',
+                        icon: const Icon(Icons.more_vert_rounded),
+                        color: const Color(0xFF111A24),
+                        onSelected: (value) {
+                          switch (value) {
+                            case _HeaderAction.settings:
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (context) =>
+                                      _SettingsPage(controller: controller),
+                                ),
+                              );
+                            case _HeaderAction.debugView:
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (context) =>
+                                      _DebugViewPage(controller: controller),
+                                ),
+                              );
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem<_HeaderAction>(
+                            value: _HeaderAction.debugView,
+                            child: Text('Debug view'),
+                          ),
+                          PopupMenuItem<_HeaderAction>(
+                            value: _HeaderAction.settings,
+                            child: Text('Settings'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
               ],
-              if (controller.selectedTab == 0) ...[
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: TextField(
-                      controller: _discoverFilterController,
-                      onChanged: controller.setDiscoverFilter,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        hintText: 'Filter',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: controller.discoverFilter.isEmpty
-                            ? null
-                            : IconButton(
-                                onPressed: () {
-                                  _discoverFilterController.clear();
-                                  controller.setDiscoverFilter('');
-                                },
-                                icon: const Icon(Icons.close_rounded),
-                                tooltip: 'Clear filter',
-                              ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              PopupMenuButton<_HeaderAction>(
-                tooltip: 'More',
-                icon: const Icon(Icons.more_vert_rounded),
-                color: const Color(0xFF111A24),
-                onSelected: (value) {
-                  switch (value) {
-                    case _HeaderAction.settings:
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) =>
-                              _SettingsPage(controller: controller),
-                        ),
-                      );
-                    case _HeaderAction.debugView:
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) =>
-                              _DebugViewPage(controller: controller),
-                        ),
-                      );
-                  }
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem<_HeaderAction>(
-                    value: _HeaderAction.debugView,
-                    child: Text('Debug view'),
-                  ),
-                  PopupMenuItem<_HeaderAction>(
-                    value: _HeaderAction.settings,
-                    child: Text('Settings'),
-                  ),
-                ],
-              ),
             ],
           ),
           if (controller.discoverError != null)
