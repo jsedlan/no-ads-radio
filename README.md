@@ -1,4 +1,4 @@
-# No Ads Radio
+# NoAds Radio
 
 A lightweight internet radio application built with Flutter for Android and iOS.
 
