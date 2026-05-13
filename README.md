@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="assets/images/logo.png" alt="NoAds Radio" width="360">
+</p>
 # NoAds Radio
 
 A lightweight internet radio application built with Flutter for Android and iOS.
