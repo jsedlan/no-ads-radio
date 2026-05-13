@@ -465,7 +465,7 @@ class RadioAppController extends ChangeNotifier {
           id: station.stationUuid,
           title: station.displayName,
           album: station.displayLocation.isEmpty
-              ? 'No Ads Radio'
+              ? 'NoAds Radio'
               : station.displayLocation,
           artUri: station.hasArtwork
               ? Uri.tryParse(station.favicon.trim())

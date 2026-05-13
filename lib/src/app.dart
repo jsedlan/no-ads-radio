@@ -24,7 +24,7 @@ class NoAdsRadioApp extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return MaterialApp(
-          title: 'No Ads Radio',
+          title: 'NoAds Radio',
           debugShowCheckedModeBanner: false,
           themeMode: _themeMode(controller.themePreference),
           theme: _buildAppTheme(Brightness.light),

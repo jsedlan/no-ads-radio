@@ -1,6 +1,6 @@
 {
-    "name": "no_ads_radio",
-    "short_name": "no_ads_radio",
+    "name": "NoAds Radio",
+    "short_name": "NoAds Radio",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

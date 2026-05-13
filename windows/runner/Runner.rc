@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "no_ads_radio" "\0"
+            VALUE "FileDescription", "NoAds Radio" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "no_ads_radio" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "no_ads_radio.exe" "\0"
-            VALUE "ProductName", "no_ads_radio" "\0"
+            VALUE "ProductName", "NoAds Radio" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
