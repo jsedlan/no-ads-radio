@@ -22,6 +22,53 @@ class _SettingsView extends StatelessWidget {
         return ListView(
           children: [
             Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Theme',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Choose how the app should look.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: _mutedTextColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SegmentedButton<AppThemePreference>(
+                      segments: const <ButtonSegment<AppThemePreference>>[
+                        ButtonSegment<AppThemePreference>(
+                          value: AppThemePreference.dark,
+                          icon: Icon(Icons.dark_mode_rounded),
+                          label: Text('Dark'),
+                        ),
+                        ButtonSegment<AppThemePreference>(
+                          value: AppThemePreference.light,
+                          icon: Icon(Icons.light_mode_rounded),
+                          label: Text('Light'),
+                        ),
+                      ],
+                      selected: <AppThemePreference>{
+                        controller.themePreference,
+                      },
+                      onSelectionChanged: (selection) {
+                        controller.setThemePreference(selection.single);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Card(
               child: ListTile(
                 onTap: () {
                   Navigator.of(context).push(
@@ -40,7 +87,7 @@ class _SettingsView extends StatelessWidget {
                 subtitle: Text(
                   categoriesSummary,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: _mutedTextColor(context),
                   ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -71,7 +118,7 @@ class _SettingsView extends StatelessWidget {
                       ? 'No recently played stations.'
                       : '${controller.recentlyPlayedStations.length} stations',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: _mutedTextColor(context),
                   ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -100,7 +147,7 @@ class _SettingsView extends StatelessWidget {
                 subtitle: Text(
                   selectedCountriesSummary,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: _mutedTextColor(context),
                   ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -131,7 +178,7 @@ class _SettingsView extends StatelessWidget {
                       ? 'No manually added stations.'
                       : '${controller.manualStations.length} stations',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: _mutedTextColor(context),
                   ),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -156,7 +203,7 @@ class _SettingsView extends StatelessWidget {
                 subtitle: Text(
                   'Display station artwork in lists and the player bar.',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: _mutedTextColor(context),
                   ),
                 ),
                 controlAffinity: ListTileControlAffinity.trailing,
@@ -178,7 +225,9 @@ class _SettingsView extends StatelessWidget {
                   'Auto-play next favorite',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: canCircleThroughFavorites ? null : Colors.white38,
+                    color: canCircleThroughFavorites
+                        ? null
+                        : _disabledTextColor(context),
                   ),
                 ),
                 subtitle: Text(
@@ -187,8 +236,8 @@ class _SettingsView extends StatelessWidget {
                       : 'When a stream fails, move to the next favorite and wrap to the start. Add at least two favorites to enable this option.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: canCircleThroughFavorites
-                        ? Colors.white70
-                        : Colors.white38,
+                        ? _mutedTextColor(context)
+                        : _disabledTextColor(context),
                   ),
                 ),
                 controlAffinity: ListTileControlAffinity.trailing,
@@ -364,7 +413,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                             Text(
                               'Add as many categories as you like. Only the first 3 will be visible as tabs on the bottom.',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white70,
+                                color: _mutedTextColor(context),
                                 height: 1.5,
                               ),
                             ),
@@ -497,7 +546,7 @@ class _ManualStationsPage extends StatelessWidget {
                             child: Text(
                               'No manually added stations.',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.white70,
+                                color: _mutedTextColor(context),
                                 height: 1.5,
                               ),
                             ),
@@ -798,7 +847,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                       child: Text(
                         'At least one country must remain selected.',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white70,
+                          color: _mutedTextColor(context),
                         ),
                       ),
                     ),
@@ -819,7 +868,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                             Text(
                               'Drag to reorder',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white70,
+                                color: _mutedTextColor(context),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -1006,7 +1055,7 @@ class _AddCountryPageState extends State<_AddCountryPage> {
                                 child: Text(
                                   'No countries available.',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white70,
+                                    color: _mutedTextColor(context),
                                   ),
                                 ),
                               )

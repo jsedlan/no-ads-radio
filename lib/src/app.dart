@@ -8,6 +8,7 @@ import 'audio/audio_engine.dart';
 import 'controllers/radio_app_controller.dart';
 import 'models/favorite_category.dart';
 import 'models/radio_station.dart';
+import 'services/settings_store.dart';
 
 part 'app_settings_pages.dart';
 part 'app_station_widgets.dart';
@@ -19,52 +20,85 @@ class NoAdsRadioApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseTheme = ThemeData(brightness: Brightness.dark);
-    final textTheme = GoogleFonts.spaceGroteskTextTheme(
-      baseTheme.textTheme,
-    ).apply(bodyColor: Colors.white, displayColor: Colors.white);
-    final theme = ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFEF6C32),
-        brightness: Brightness.dark,
-      ),
-      textTheme: textTheme,
-      scaffoldBackgroundColor: const Color(0xFF0D1117),
-    );
-
-    return MaterialApp(
-      title: 'No Ads Radio',
-      debugShowCheckedModeBanner: false,
-      theme: theme.copyWith(
-        cardTheme: const CardThemeData(
-          color: Color(0xFF111A24),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(28)),
-          ),
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Color(0xFF162231),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(18)),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        navigationBarTheme: NavigationBarThemeData(
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            final selected = states.contains(WidgetState.selected);
-            return textTheme.labelSmall?.copyWith(
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-            );
-          }),
-        ),
-      ),
-      home: RadioHomePage(controller: controller),
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'No Ads Radio',
+          debugShowCheckedModeBanner: false,
+          themeMode: _themeMode(controller.themePreference),
+          theme: _buildAppTheme(Brightness.light),
+          darkTheme: _buildAppTheme(Brightness.dark),
+          home: RadioHomePage(controller: controller),
+        );
+      },
     );
   }
+}
+
+ThemeMode _themeMode(AppThemePreference preference) {
+  return switch (preference) {
+    AppThemePreference.light => ThemeMode.light,
+    AppThemePreference.dark => ThemeMode.dark,
+  };
+}
+
+ThemeData _buildAppTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
+  final baseTheme = ThemeData(brightness: brightness);
+  final textTheme = GoogleFonts.spaceGroteskTextTheme(baseTheme.textTheme);
+  final onSurface = isDark ? Colors.white : const Color(0xFF17202B);
+  return ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFFEF6C32),
+      brightness: brightness,
+    ),
+    textTheme: textTheme.apply(bodyColor: onSurface, displayColor: onSurface),
+    scaffoldBackgroundColor: isDark
+        ? const Color(0xFF0D1117)
+        : const Color(0xFFF6F1E8),
+    cardTheme: CardThemeData(
+      color: isDark ? const Color(0xFF111A24) : const Color(0xFFFFFBF4),
+      elevation: 0,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(28)),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: isDark ? const Color(0xFF162231) : const Color(0xFFFFFBF4),
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.all(Radius.circular(18)),
+        borderSide: BorderSide.none,
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return textTheme.labelSmall?.copyWith(
+          fontSize: 11,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+        );
+      }),
+    ),
+  );
+}
+
+Color _mutedTextColor(BuildContext context) {
+  return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.68);
+}
+
+Color _disabledTextColor(BuildContext context) {
+  return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38);
+}
+
+List<Color> _shellGradientColors(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return isDark
+      ? const <Color>[Color(0xFF0D1117), Color(0xFF111827), Color(0xFF1A1025)]
+      : const <Color>[Color(0xFFF6F1E8), Color(0xFFFFF7E8), Color(0xFFEAF1F5)];
 }
 
 class RadioHomePage extends StatefulWidget {
@@ -190,11 +224,11 @@ class _Shell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0D1117), Color(0xFF111827), Color(0xFF1A1025)],
+          colors: _shellGradientColors(context),
         ),
       ),
       child: Scaffold(
@@ -296,7 +330,7 @@ class _CompactTopTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = selected ? const Color(0xFFFF8A5B) : Colors.white70;
+    final color = selected ? const Color(0xFFFF8A5B) : _mutedTextColor(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -531,7 +565,7 @@ class _HeaderState extends State<_Header> {
                       PopupMenuButton<_HeaderAction>(
                         tooltip: 'More',
                         icon: const Icon(Icons.more_vert_rounded),
-                        color: const Color(0xFF111A24),
+                        color: theme.cardTheme.color,
                         onSelected: (value) {
                           switch (value) {
                             case _HeaderAction.settings:
@@ -656,7 +690,9 @@ class _PlayerBar extends StatelessWidget {
     final playback = controller.playback;
 
     return Material(
-      color: Colors.black,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : const Color(0xFFFFFBF4),
       child: SafeArea(
         top: false,
         child: SizedBox(
@@ -759,7 +795,7 @@ class _SleepTimerButton extends StatelessWidget {
               : null,
         ),
       ),
-      color: const Color(0xFF111A24),
+      color: Theme.of(context).cardTheme.color,
       onSelected: enabled
           ? (minutes) async {
               if (minutes == _customSleepTimerValue) {
@@ -922,7 +958,9 @@ class _PlayerBarText extends StatelessWidget {
     return _ChyronText(
       text: message,
       style: textStyle.copyWith(
-        color: playback.hasError ? theme.colorScheme.error : Colors.white,
+        color: playback.hasError
+            ? theme.colorScheme.error
+            : theme.colorScheme.onSurface,
       ),
     );
   }

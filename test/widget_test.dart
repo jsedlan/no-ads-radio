@@ -41,8 +41,12 @@ void main() {
     await tester.tap(find.text('Settings').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Show station icon'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
     expect(find.text('Recently played'), findsOneWidget);
+    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Show station icon'), findsOneWidget);
   });
 
   test(
@@ -70,11 +74,14 @@ void main() {
       connectivityService: FakeConnectivityService.online(),
     );
 
+    expect(controller.themePreference, AppThemePreference.dark);
     expect(controller.showStationIcon, isFalse);
 
+    await controller.setThemePreference(AppThemePreference.light);
     await controller.setShowStationIcon(true);
 
     final reloaded = await settingsStore.loadSettings();
+    expect(reloaded.themePreference, AppThemePreference.light);
     expect(reloaded.showStationIcon, isTrue);
   });
 

@@ -89,6 +89,7 @@ class RadioAppController extends ChangeNotifier {
   String? searchError;
   String? favoritesError;
   String discoverFilter = '';
+  AppThemePreference themePreference = AppThemePreference.dark;
   bool showStationIcon = false;
   bool circleThroughFavorites = true;
   List<String> countryCodes = const <String>[];
@@ -164,6 +165,7 @@ class RadioAppController extends ChangeNotifier {
         );
         await _settingsStore.saveSettings(settings);
       }
+      themePreference = settings.themePreference;
       showStationIcon = settings.showStationIcon;
       circleThroughFavorites = settings.circleThroughFavorites;
       countryCodes = settings.countryCodes;
@@ -589,6 +591,15 @@ class RadioAppController extends ChangeNotifier {
     await _saveSettings();
   }
 
+  Future<void> setThemePreference(AppThemePreference value) async {
+    if (themePreference == value) {
+      return;
+    }
+    themePreference = value;
+    notifyListeners();
+    await _saveSettings();
+  }
+
   Future<void> setCircleThroughFavorites(bool value) async {
     circleThroughFavorites = value;
     notifyListeners();
@@ -752,6 +763,7 @@ class RadioAppController extends ChangeNotifier {
   Future<void> _saveSettings() async {
     await _settingsStore.saveSettings(
       AppSettings(
+        themePreference: themePreference,
         showStationIcon: showStationIcon,
         circleThroughFavorites: circleThroughFavorites,
         countryCodes: countryCodes,

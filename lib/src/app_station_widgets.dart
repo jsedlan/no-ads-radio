@@ -68,7 +68,7 @@ class _DebugView extends StatelessWidget {
             'No station is currently playing.',
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+            ).textTheme.bodyMedium?.copyWith(color: _mutedTextColor(context)),
           );
         }
 
@@ -134,7 +134,7 @@ class _StationList extends StatelessWidget {
             child: Text(
               emptyMessage,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.white70,
+                color: _mutedTextColor(context),
                 height: 1.5,
               ),
             ),
@@ -214,7 +214,9 @@ class _StationDivider extends StatelessWidget {
     return Container(
       height: 1,
       margin: const EdgeInsets.only(bottom: 6),
-      color: Colors.white.withValues(alpha: 0.18),
+      color: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.7),
     );
   }
 }
@@ -311,7 +313,7 @@ class _StationTile extends StatelessWidget {
 
     final tile = Card(
       margin: EdgeInsets.zero,
-      color: isCurrent ? const Color(0xFF1A2736) : null,
+      color: isCurrent ? _selectedStationTileColor(context) : null,
       child: ListTile(
         onTap: () => controller.playStation(station),
         contentPadding: const EdgeInsets.only(
@@ -411,7 +413,7 @@ class _StationDragFeedback extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      color: const Color(0xFF1A2736),
+      color: _selectedStationTileColor(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
@@ -444,7 +446,7 @@ class _StationDragFeedback extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.white70,
+                        color: _mutedTextColor(context),
                       ),
                     ),
                 ],
@@ -512,6 +514,13 @@ class _CountryOption {
 
   final String code;
   final String name;
+}
+
+Color _selectedStationTileColor(BuildContext context) {
+  final theme = Theme.of(context);
+  return theme.colorScheme.primaryContainer.withValues(
+    alpha: theme.brightness == Brightness.dark ? 0.32 : 0.42,
+  );
 }
 
 String _selectedCountriesSummary(List<String> selectedCountryCodes) {

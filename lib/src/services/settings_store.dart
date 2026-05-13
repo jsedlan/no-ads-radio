@@ -3,8 +3,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/favorite_category.dart';
 import '../models/radio_station.dart';
 
+enum AppThemePreference {
+  light,
+  dark;
+
+  static AppThemePreference fromStorage(String? value) {
+    return switch (value) {
+      'light' => AppThemePreference.light,
+      _ => AppThemePreference.dark,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
+    this.themePreference = AppThemePreference.dark,
     this.showStationIcon = false,
     this.circleThroughFavorites = true,
     this.countryCodes = const <String>[],
@@ -15,6 +28,7 @@ class AppSettings {
     ],
   });
 
+  final AppThemePreference themePreference;
   final bool showStationIcon;
   final bool circleThroughFavorites;
   final List<String> countryCodes;
@@ -23,6 +37,7 @@ class AppSettings {
   final List<FavoriteCategory> favoriteCategories;
 
   AppSettings copyWith({
+    AppThemePreference? themePreference,
     bool? showStationIcon,
     bool? circleThroughFavorites,
     List<String>? countryCodes,
@@ -31,6 +46,7 @@ class AppSettings {
     List<FavoriteCategory>? favoriteCategories,
   }) {
     return AppSettings(
+      themePreference: themePreference ?? this.themePreference,
       showStationIcon: showStationIcon ?? this.showStationIcon,
       circleThroughFavorites:
           circleThroughFavorites ?? this.circleThroughFavorites,
@@ -52,6 +68,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   SharedPreferencesSettingsStore(this._preferences);
 
   static const String _showStationIconKey = 'show_station_icon';
+  static const String _themePreferenceKey = 'theme_preference';
   static const String _circleThroughFavoritesKey = 'circle_through_favorites';
   static const String _countryCodesKey = 'country_codes';
   static const String _manualStationsKey = 'manual_stations';
@@ -64,6 +81,9 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   Future<AppSettings> loadSettings() async {
     final favoriteCategories = _loadFavoriteCategories();
     return AppSettings(
+      themePreference: AppThemePreference.fromStorage(
+        _preferences.getString(_themePreferenceKey),
+      ),
       showStationIcon: _preferences.getBool(_showStationIconKey) ?? false,
       circleThroughFavorites:
           _preferences.getBool(_circleThroughFavoritesKey) ?? true,
@@ -85,6 +105,10 @@ class SharedPreferencesSettingsStore implements SettingsStore {
 
   @override
   Future<void> saveSettings(AppSettings settings) async {
+    await _preferences.setString(
+      _themePreferenceKey,
+      settings.themePreference.name,
+    );
     await _preferences.setBool(_showStationIconKey, settings.showStationIcon);
     await _preferences.setBool(
       _circleThroughFavoritesKey,
