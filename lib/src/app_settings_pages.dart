@@ -1,9 +1,53 @@
 part of 'app.dart';
 
-class _SettingsView extends StatelessWidget {
+class _SettingsView extends StatefulWidget {
   const _SettingsView({required this.controller});
 
   final RadioAppController controller;
+
+  @override
+  State<_SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends State<_SettingsView>
+    with WidgetsBindingObserver {
+  final AndroidSettingsLauncher _settingsLauncher =
+      const AndroidSettingsLauncher();
+  bool _isIgnoringBatteryOptimizations = false;
+
+  RadioAppController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refreshBatteryOptimizationStatus());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshBatteryOptimizationStatus());
+    }
+  }
+
+  Future<void> _refreshBatteryOptimizationStatus() async {
+    final isIgnoringBatteryOptimizations = await _settingsLauncher
+        .isIgnoringBatteryOptimizations();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +233,33 @@ class _SettingsView extends StatelessWidget {
               ),
             ),
             Card(
+              child: ListTile(
+                onTap: () => _openBatterySettings(context),
+                title: Text(
+                  'Battery usage',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  'Set NoAds Radio to Unrestricted in Android settings.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: _mutedTextColor(context),
+                  ),
+                ),
+                trailing: IgnorePointer(
+                  child: Switch(
+                    value: _isIgnoringBatteryOptimizations,
+                    onChanged: (_) {},
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+              ),
+            ),
+            Card(
               child: CheckboxListTile(
                 value: controller.showStationIcon,
                 onChanged: (value) {
@@ -250,6 +321,19 @@ class _SettingsView extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _openBatterySettings(BuildContext context) async {
+    final opened = await _settingsLauncher.openAppBatterySettings();
+    if (opened || !context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Could not open Android app settings on this device.'),
+      ),
     );
   }
 }

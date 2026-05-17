@@ -1,5 +1,68 @@
 package com.example.no_ads_radio
 
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
+import android.content.Context
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 import com.ryanheise.audioservice.AudioServiceActivity
 
-class MainActivity : AudioServiceActivity()
+class MainActivity : AudioServiceActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.example.no_ads_radio/android_settings"
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openAppBatterySettings" -> result.success(openAppBatterySettings())
+                "isIgnoringBatteryOptimizations" -> result.success(isIgnoringBatteryOptimizations())
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun openAppBatterySettings(): Boolean {
+        if (!isIgnoringBatteryOptimizations()) {
+            val requestIntent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            try {
+                startActivity(requestIntent)
+                return true
+            } catch (_: Exception) {
+                // Fall through to the broader settings screens below.
+            }
+        }
+
+        val appSettingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:$packageName")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        return try {
+            startActivity(appSettingsIntent)
+            true
+        } catch (_: Exception) {
+            val fallbackIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            try {
+                startActivity(fallbackIntent)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(packageName)
+    }
+}
