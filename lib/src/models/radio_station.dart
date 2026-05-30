@@ -46,6 +46,7 @@ class RadioStation {
   final Map<String, dynamic> rawSource;
 
   factory RadioStation.fromJson(Map<String, dynamic> json) {
+    final country = _readString(json['country']);
     return RadioStation(
       stationUuid: _readString(json['stationuuid']),
       name: _readString(json['name'], fallback: 'Unknown station'),
@@ -54,8 +55,8 @@ class RadioStation {
       homepage: _readString(json['homepage']),
       favicon: _readString(json['favicon']),
       tags: _readString(json['tags']),
-      country: _readString(json['country']),
-      countryCode: _readString(json['countrycode']).toUpperCase(),
+      country: country,
+      countryCode: _readCountryCode(json['countrycode'], country: country),
       state: _readString(json['state']),
       language: _readString(json['language']),
       codec: _readString(json['codec']),
@@ -180,6 +181,14 @@ class RadioStation {
       return fallback;
     }
     return value.toString();
+  }
+
+  static String _readCountryCode(Object? value, {required String country}) {
+    final countryCode = _readString(value).trim().toUpperCase();
+    if (countryCode.isNotEmpty) {
+      return countryCode;
+    }
+    return _scraperCountryCode(country);
   }
 
   static int _readInt(Object? value) {

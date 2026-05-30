@@ -1,9 +1,8 @@
-import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
 import '../models/radio_station.dart';
 import 'catalog_station_repository.dart';
+import 'station_catalog_json.dart';
 
 class RemoteJsonStationRepository extends CatalogStationRepository {
   RemoteJsonStationRepository({required String catalogUrl, http.Client? client})
@@ -23,6 +22,11 @@ class RemoteJsonStationRepository extends CatalogStationRepository {
       return _cachedStations!;
     }
 
+    _cachedStations = parseStationCatalogJson(await fetchCatalogJson());
+    return _cachedStations!;
+  }
+
+  Future<String> fetchCatalogJson() async {
     final response = await _client.get(
       _catalogUri,
       headers: const <String, String>{
@@ -37,22 +41,6 @@ class RemoteJsonStationRepository extends CatalogStationRepository {
       );
     }
 
-    final payload = jsonDecode(response.body);
-    if (payload is! List<dynamic>) {
-      throw const StationCatalogException(
-        'Unexpected station catalog response.',
-      );
-    }
-
-    _cachedStations = payload
-        .map((item) => RadioStation.fromJson(item as Map<String, dynamic>))
-        .where((station) => station.bestStreamUrl.isNotEmpty)
-        .toList(growable: false);
-
-    if (_cachedStations!.isEmpty) {
-      throw const StationCatalogException('Station catalog is empty.');
-    }
-
-    return _cachedStations!;
+    return response.body;
   }
 }

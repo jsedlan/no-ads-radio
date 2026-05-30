@@ -98,6 +98,19 @@ void main() {
     },
   );
 
+  test('station parser derives country code for scraped Serbian stations', () {
+    final station = RadioStation.fromJson(<String, dynamic>{
+      'stationuuid': 'scraped-serbian-station',
+      'name': 'Serbian Station',
+      'url': 'https://example.com/stream',
+      'url_resolved': 'https://example.com/stream',
+      'country': 'Srbija',
+      'countrycode': '',
+    });
+
+    expect(station.countryCode, 'RS');
+  });
+
   test('controller persists settings changes', () async {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
