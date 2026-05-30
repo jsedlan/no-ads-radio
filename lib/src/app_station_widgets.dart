@@ -462,19 +462,25 @@ class _StationDragFeedback extends StatelessWidget {
 }
 
 class _StationArtwork extends StatelessWidget {
-  const _StationArtwork({required this.station});
+  const _StationArtwork({
+    required this.station,
+    this.size = 56,
+    this.borderRadius = 16,
+  });
 
   final RadioStation station;
+  final double size;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(borderRadius),
       child: SizedBox(
-        width: 56,
-        height: 56,
+        width: size,
+        height: size,
         child: station.hasArtwork
             ? Image.network(
                 station.favicon,
@@ -553,7 +559,7 @@ List<FavoriteCategory> _visibleCategories(List<FavoriteCategory> categories) {
       FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
     ];
   }
-  return normalized.take(3).toList(growable: false);
+  return normalized.take(2).toList(growable: false);
 }
 
 List<_CountryOption> _countryOptionsForCodes(List<String> countryCodes) {

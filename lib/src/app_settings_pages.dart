@@ -415,6 +415,8 @@ class _CategoriesPage extends StatefulWidget {
 
 class _CategoriesPageState extends State<_CategoriesPage> {
   late final List<TextEditingController> _controllers;
+  late final List<FocusNode> _focusNodes;
+  late final List<FavoriteCategory> _categories;
 
   @override
   void initState() {
@@ -424,9 +426,15 @@ class _CategoriesPageState extends State<_CategoriesPage> {
             FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
           ]
         : widget.controller.favoriteCategories;
+    _categories = List<FavoriteCategory>.from(categories, growable: true);
     _controllers = categories
         .map((category) => TextEditingController(text: category.name))
         .toList(growable: true);
+    _focusNodes = List<FocusNode>.generate(
+      categories.length,
+      (_) => FocusNode(),
+      growable: true,
+    );
   }
 
   @override
@@ -434,18 +442,45 @@ class _CategoriesPageState extends State<_CategoriesPage> {
     for (final controller in _controllers) {
       controller.dispose();
     }
+    for (final focusNode in _focusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
   void _addCategory() {
     setState(() {
+      _categories.add(
+        FavoriteCategory(
+          id: 'category-${DateTime.now().microsecondsSinceEpoch}-${_categories.length}',
+          name: '',
+        ),
+      );
       _controllers.add(TextEditingController());
+      _focusNodes.add(FocusNode());
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNodes.last.requestFocus();
+      }
+    });
+  }
+
+  void _removeCategory(int index) {
+    setState(() {
+      _categories.removeAt(index);
+      _controllers.removeAt(index).dispose();
+      _focusNodes.removeAt(index).dispose();
     });
   }
 
   Future<void> _saveAndClose() async {
-    final values = _controllers.map((controller) => controller.text).toList();
-    await widget.controller.setFavoriteCategories(values);
+    final values = List<FavoriteCategory>.generate(
+      _controllers.length,
+      (index) => _categories[index].copyWith(name: _controllers[index].text),
+      growable: false,
+    );
+    await widget.controller.setFavoriteCategoryItems(values);
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -495,7 +530,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Add as many categories as you like. Only the first 3 will be visible as tabs on the bottom.',
+                              'Add as many categories as you like. Only the first 2 will be visible as tabs on the bottom.',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: _mutedTextColor(context),
                                 height: 1.5,
@@ -513,15 +548,22 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                                 ),
                                 child: TextField(
                                   controller: _controllers[index],
+                                  focusNode: _focusNodes[index],
                                   textInputAction:
                                       index == _controllers.length - 1
                                       ? TextInputAction.done
                                       : TextInputAction.next,
                                   decoration: InputDecoration(
-                                    labelText: 'Category ${index + 1}',
                                     hintText: index == 0
                                         ? 'Favorites'
                                         : 'New category',
+                                    suffixIcon: IconButton(
+                                      onPressed: () => _removeCategory(index),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                      ),
+                                      tooltip: 'Remove category',
+                                    ),
                                   ),
                                 ),
                               );

@@ -143,6 +143,15 @@ class RadioAppController extends ChangeNotifier {
   List<RadioStation> get favorites =>
       favoritesForCategory(activeFavoriteCategoryId);
 
+  bool get canPlayAdjacentFavorite {
+    final station = currentStation;
+    if (station == null) {
+      return false;
+    }
+    final categoryId = _favoriteCategoryIdForStation(station);
+    return categoryId != null && favoritesForCategory(categoryId).length >= 2;
+  }
+
   Timer? _playbackStallTimer;
   Timer? _internetRetryTimer;
   Timer? _simulatedStallTimer;
@@ -312,14 +321,19 @@ class RadioAppController extends ChangeNotifier {
     final remapped = <String, List<RadioStation>>{};
     for (var index = 0; index < nextCategories.length; index += 1) {
       final nextCategory = nextCategories[index];
-      final previousCategory = index < previousCategories.length
+      final previousCategory = previousCategories
+          .where((category) => category.id == nextCategory.id)
+          .firstOrNull;
+      final fallbackCategory = index < previousCategories.length
           ? previousCategories[index]
           : null;
       remapped[nextCategory.id] = List<RadioStation>.unmodifiable(
-        previousCategory == null
+        previousCategory == null && fallbackCategory == null
             ? const <RadioStation>[]
-            : (favoritesByCategory[previousCategory.id] ??
-                  favoritesByCategory[previousCategory.name] ??
+            : (favoritesByCategory[previousCategory?.id] ??
+                  favoritesByCategory[previousCategory?.name] ??
+                  favoritesByCategory[fallbackCategory?.id] ??
+                  favoritesByCategory[fallbackCategory?.name] ??
                   const <RadioStation>[]),
       );
     }
@@ -517,6 +531,22 @@ class RadioAppController extends ChangeNotifier {
     }
   }
 
+  Future<void> playPreviousFavorite() async {
+    final previous = _previousFavoriteStationFor(currentStation);
+    if (previous == null) {
+      return;
+    }
+    await playStation(previous);
+  }
+
+  Future<void> playNextFavorite() async {
+    final next = _nextFavoriteStationFor(currentStation);
+    if (next == null) {
+      return;
+    }
+    await playStation(next);
+  }
+
   Future<void> stopPlayback() async {
     _cancelSleepTimer(notify: false);
     _stopInternetRecoveryRetryLoop();
@@ -637,6 +667,29 @@ class RadioAppController extends ChangeNotifier {
           name: categoryNames[index],
         );
       }),
+    );
+    favoritesByCategory = _remapFavoritesByCategory(
+      previousCategories,
+      favoriteCategories,
+    );
+    _syncFavoriteCategoriesWithSavedData();
+    notifyListeners();
+    await _saveSettings();
+    await _favoritesStore.saveFavorites(favoritesByCategory);
+  }
+
+  Future<void> setFavoriteCategoryItems(List<FavoriteCategory> values) async {
+    final previousCategories = favoriteCategories;
+    final normalized = values
+        .map((category) => category.copyWith(name: category.name.trim()))
+        .where((category) => category.name.isNotEmpty)
+        .toList(growable: false);
+    favoriteCategories = List<FavoriteCategory>.unmodifiable(
+      normalized.isEmpty
+          ? const <FavoriteCategory>[
+              FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+            ]
+          : normalized,
     );
     favoritesByCategory = _remapFavoritesByCategory(
       previousCategories,
@@ -900,6 +953,33 @@ class RadioAppController extends ChangeNotifier {
 
     final nextIndex = (currentIndex + 1) % stations.length;
     return stations[nextIndex];
+  }
+
+  RadioStation? _previousFavoriteStationFor(RadioStation? station) {
+    if (station == null) {
+      return null;
+    }
+
+    final categoryId = _favoriteCategoryIdForStation(station);
+    if (categoryId == null) {
+      return null;
+    }
+
+    final stations = favoritesForCategory(categoryId);
+    if (stations.length < 2) {
+      return null;
+    }
+
+    final currentIndex = stations.indexWhere(
+      (item) => item.stationUuid == station.stationUuid,
+    );
+    if (currentIndex < 0) {
+      return null;
+    }
+
+    final previousIndex =
+        (currentIndex - 1 + stations.length) % stations.length;
+    return stations[previousIndex];
   }
 
   void _startInternetRecoveryRetryLoop() {

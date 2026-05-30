@@ -178,33 +178,30 @@ class _RadioHomePageState extends State<RadioHomePage> {
                   },
                 ),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: IndexedStack(
-                      index: selectedIndex,
-                      children: [
-                        _DiscoverTab(
-                          controller: controller,
-                          onDragStateChanged: (isDragging) {
-                            if (_isDraggingDiscoverStation == isDragging) {
-                              return;
+                  child: IndexedStack(
+                    index: selectedIndex,
+                    children: [
+                      _DiscoverTab(
+                        controller: controller,
+                        onDragStateChanged: (isDragging) {
+                          if (_isDraggingDiscoverStation == isDragging) {
+                            return;
+                          }
+                          setState(() {
+                            _isDraggingDiscoverStation = isDragging;
+                            if (!isDragging) {
+                              _favoriteDropTargetIndex = null;
                             }
-                            setState(() {
-                              _isDraggingDiscoverStation = isDragging;
-                              if (!isDragging) {
-                                _favoriteDropTargetIndex = null;
-                              }
-                            });
-                          },
+                          });
+                        },
+                      ),
+                      ...visibleCategories.map(
+                        (category) => _FavoritesTab(
+                          controller: controller,
+                          category: category,
                         ),
-                        ...visibleCategories.map(
-                          (category) => _FavoritesTab(
-                            controller: controller,
-                            category: category,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -641,15 +638,19 @@ class _DiscoverTab extends StatelessWidget {
       controller.discoverFilter,
     );
 
-    return RefreshIndicator(
-      onRefresh: controller.refreshDiscover,
-      child: _StationList(
-        controller: controller,
-        stations: stations,
-        isLoading: controller.isRefreshingDiscover,
-        emptyMessage: 'No stations available right now.',
-        draggableStations: true,
-        onDragStateChanged: onDragStateChanged,
+    return _StationTabContent(
+      stationCount: stations.length,
+      isFiltered: controller.discoverFilter.trim().isNotEmpty,
+      child: RefreshIndicator(
+        onRefresh: controller.refreshDiscover,
+        child: _StationList(
+          controller: controller,
+          stations: stations,
+          isLoading: controller.isRefreshingDiscover,
+          emptyMessage: 'No stations available right now.',
+          draggableStations: true,
+          onDragStateChanged: onDragStateChanged,
+        ),
       ),
     );
   }
@@ -663,20 +664,66 @@ class _FavoritesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _StationList(
-      controller: controller,
-      stations: controller.favoritesForCategory(category.id),
-      emptyMessage:
-          'No favorites in ${category.name} yet. Save stations from Stations to build this category.',
-      onReorder: (oldIndex, newIndex) {
-        controller.reorderFavorites(
-          categoryId: category.id,
-          oldIndex: oldIndex,
-          newIndex: newIndex,
-        );
-      },
+    final stations = controller.favoritesForCategory(category.id);
+    return _StationTabContent(
+      stationCount: stations.length,
+      child: _StationList(
+        controller: controller,
+        stations: stations,
+        emptyMessage:
+            'No favorites in ${category.name} yet. Save stations from Stations to build this category.',
+        onReorder: (oldIndex, newIndex) {
+          controller.reorderFavorites(
+            categoryId: category.id,
+            oldIndex: oldIndex,
+            newIndex: newIndex,
+          );
+        },
+      ),
     );
   }
+}
+
+class _StationTabContent extends StatelessWidget {
+  const _StationTabContent({
+    required this.child,
+    required this.stationCount,
+    this.isFiltered = false,
+  });
+
+  final Widget child;
+  final int stationCount;
+  final bool isFiltered;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          Expanded(child: child),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 6, 0, 10),
+            child: Text(
+              _stationCountLabel(stationCount, isFiltered: isFiltered),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: _mutedTextColor(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _stationCountLabel(int stationCount, {bool isFiltered = false}) {
+  final stationLabel = stationCount == 1 ? 'station' : 'stations';
+  final filterLabel = isFiltered ? ' filtered' : '';
+  return '$stationCount$filterLabel $stationLabel';
 }
 
 class _PlayerBar extends StatelessWidget {
@@ -689,6 +736,8 @@ class _PlayerBar extends StatelessWidget {
     final theme = Theme.of(context);
     final station = controller.currentStation;
     final playback = controller.playback;
+    final canOpenNowPlaying =
+        station != null && (playback.isPlaying || playback.isPaused);
 
     return Material(
       color: Theme.of(context).brightness == Brightness.dark
@@ -696,35 +745,48 @@ class _PlayerBar extends StatelessWidget {
           : const Color(0xFFFFFBF4),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 56,
-          width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
-            child: Row(
-              children: [
-                if (station != null && controller.showStationIcon) ...[
-                  SizedBox.square(
-                    dimension: 36,
-                    child: _StationArtwork(station: station),
+        child: InkWell(
+          onTap: canOpenNowPlaying
+              ? () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) =>
+                          _NowPlayingScreen(controller: controller),
+                    ),
+                  );
+                }
+              : null,
+          child: SizedBox(
+            height: 56,
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+              child: Row(
+                children: [
+                  if (station != null && controller.showStationIcon) ...[
+                    _StationArtwork(
+                      station: station,
+                      size: 36,
+                      borderRadius: 12,
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: station == null
+                        ? const SizedBox.shrink()
+                        : _PlayerBarText(
+                            station: station,
+                            playback: playback,
+                            playbackStalled: controller.playbackStalled,
+                            playbackStallReason: controller.playbackStallReason,
+                            sleepTimerRemaining: controller.sleepTimerRemaining,
+                            theme: theme,
+                          ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
+                  ..._playerBarActions(playback, hasStation: station != null),
                 ],
-                Expanded(
-                  child: station == null
-                      ? const SizedBox.shrink()
-                      : _PlayerBarText(
-                          station: station,
-                          playback: playback,
-                          playbackStalled: controller.playbackStalled,
-                          playbackStallReason: controller.playbackStallReason,
-                          sleepTimerRemaining: controller.sleepTimerRemaining,
-                          theme: theme,
-                        ),
-                ),
-                const SizedBox(width: 8),
-                ..._playerBarActions(playback, hasStation: station != null),
-              ],
+              ),
             ),
           ),
         ),
@@ -762,6 +824,280 @@ class _PlayerBar extends StatelessWidget {
         icon: const Icon(Icons.stop_rounded),
       ),
     ];
+  }
+}
+
+class _NowPlayingScreen extends StatelessWidget {
+  const _NowPlayingScreen({required this.controller});
+
+  final RadioAppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final station = controller.currentStation;
+        final playback = controller.playback;
+
+        return _Shell(
+          child: SafeArea(
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                title: const Text('Now playing'),
+                leading: IconButton(
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+              ),
+              body: station == null
+                  ? const Center(child: Text('Nothing is playing.'))
+                  : _NowPlayingBody(
+                      controller: controller,
+                      station: station,
+                      playback: playback,
+                    ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _NowPlayingBody extends StatelessWidget {
+  const _NowPlayingBody({
+    required this.controller,
+    required this.station,
+    required this.playback,
+  });
+
+  final RadioAppController controller;
+  final RadioStation station;
+  final PlaybackSnapshot playback;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final status = _playerBarStatus(
+      playback: playback,
+      playbackStalled: controller.playbackStalled,
+      playbackStallReason: controller.playbackStallReason,
+      stationName: station.displayName,
+    );
+    final title = _cleanNowPlayingMetadata(
+      playback.nowPlaying?.displayTitle,
+      stationName: station.displayName,
+    );
+    final streamStation = _cleanNowPlayingMetadata(
+      playback.nowPlaying?.stationName,
+      stationName: station.displayName,
+    );
+    final genre = _cleanNowPlayingMetadata(
+      playback.nowPlaying?.genre,
+      stationName: station.displayName,
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      children: [
+        Center(
+          child: _StationArtwork(station: station, size: 168, borderRadius: 28),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          station.displayName,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        if (status != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            status,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: playback.hasError
+                  ? theme.colorScheme.error
+                  : _mutedTextColor(context),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        const SizedBox(height: 28),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _LargePlaybackButton(
+              tooltip: 'Previous favorite',
+              icon: Icons.skip_previous_rounded,
+              onPressed: controller.canPlayAdjacentFavorite
+                  ? controller.playPreviousFavorite
+                  : null,
+            ),
+            const SizedBox(width: 18),
+            _LargePlaybackButton(
+              tooltip: playback.isPlaying ? 'Pause' : 'Play',
+              icon: playback.isPlaying
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
+              prominent: true,
+              onPressed: playback.isLoading
+                  ? null
+                  : playback.isPlaying
+                  ? controller.pausePlayback
+                  : controller.resumePlayback,
+            ),
+            const SizedBox(width: 18),
+            _LargePlaybackButton(
+              tooltip: 'Next favorite',
+              icon: Icons.skip_next_rounded,
+              onPressed: controller.canPlayAdjacentFavorite
+                  ? controller.playNextFavorite
+                  : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        _NowPlayingInfoCard(
+          children: [
+            if (title != null) _NowPlayingInfoRow(label: 'Track', value: title),
+            if (streamStation != null)
+              _NowPlayingInfoRow(label: 'Stream', value: streamStation),
+            if (genre != null) _NowPlayingInfoRow(label: 'Genre', value: genre),
+            if (station.displayLocation.isNotEmpty)
+              _NowPlayingInfoRow(
+                label: 'Location',
+                value: station.displayLocation,
+              ),
+            if (station.displayLanguage.isNotEmpty)
+              _NowPlayingInfoRow(
+                label: 'Language',
+                value: station.displayLanguage,
+              ),
+            if (station.displayTags.isNotEmpty)
+              _NowPlayingInfoRow(label: 'Tags', value: station.displayTags),
+            if (station.codec.trim().isNotEmpty)
+              _NowPlayingInfoRow(label: 'Codec', value: station.codec.trim()),
+            if (station.bitrate > 0)
+              _NowPlayingInfoRow(
+                label: 'Bitrate',
+                value: '${station.bitrate} kbps',
+              ),
+            if (controller.sleepTimerRemaining > Duration.zero)
+              _NowPlayingInfoRow(
+                label: 'Sleep timer',
+                value: _formatSleepTimerRemaining(
+                  controller.sleepTimerRemaining,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LargePlaybackButton extends StatelessWidget {
+  const _LargePlaybackButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.prominent = false,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = IconButton.styleFrom(
+      fixedSize: Size.square(prominent ? 76 : 60),
+    );
+    final iconWidget = Icon(icon, size: prominent ? 40 : 34);
+
+    return prominent
+        ? IconButton.filled(
+            tooltip: tooltip,
+            style: style,
+            onPressed: onPressed,
+            icon: iconWidget,
+          )
+        : IconButton.filledTonal(
+            tooltip: tooltip,
+            style: style,
+            onPressed: onPressed,
+            icon: iconWidget,
+          );
+  }
+}
+
+class _NowPlayingInfoCard extends StatelessWidget {
+  const _NowPlayingInfoCard({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (children.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        child: Column(children: children),
+      ),
+    );
+  }
+}
+
+class _NowPlayingInfoRow extends StatelessWidget {
+  const _NowPlayingInfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: _mutedTextColor(context),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

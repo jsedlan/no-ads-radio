@@ -49,6 +49,40 @@ void main() {
     expect(find.text('Show station icon'), findsOneWidget);
   });
 
+  testWidgets('bottom player opens now playing only while active', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    final screenSize = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.tapAt(Offset(screenSize.width / 2, screenSize.height - 28));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Now playing'), findsNothing);
+
+    await controller.playStation(controller.discoverStations.first);
+    await tester.pumpAndSettle();
+
+    await tester.tapAt(Offset(screenSize.width / 2, screenSize.height - 28));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Now playing'), findsOneWidget);
+    expect(find.text('Location'), findsOneWidget);
+    expect(find.text('Codec'), findsOneWidget);
+
+    await controller.stopPlayback();
+    await tester.pumpAndSettle();
+  });
+
   test(
     'fallback repository uses later source when earlier one fails',
     () async {
