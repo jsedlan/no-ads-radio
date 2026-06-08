@@ -65,7 +65,8 @@ abstract class CatalogStationRepository
           }
           if (countryLower.isNotEmpty) {
             final stationCountry = station.countryCode.trim().toLowerCase();
-            if (stationCountry != countryLower) {
+            if (stationCountry != countryLower &&
+                !station.isDiasporaForCountryCode(countryLower)) {
               return false;
             }
           }

@@ -1118,6 +1118,17 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Diaspora stations are automatically included when '
+                        'you select any former Yugoslav country.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: _mutedTextColor(context),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Card(
                       child: Padding(

@@ -390,6 +390,136 @@ void main() {
     },
   );
 
+  test(
+    'diaspora stations are included for every former Yugoslav country',
+    () async {
+      final repository = SingleStationCatalogRepository(
+        RadioStation.fromJson(<String, dynamic>{
+          'stationuuid': 'diaspora-station',
+          'name': 'Diaspora Station',
+          'url': 'https://example.com/stream',
+          'url_resolved': 'https://example.com/stream',
+          'country': 'Dijaspora',
+          'countrycode': '',
+          'state': 'Germany',
+        }),
+      );
+
+      for (final countryCode in <String>['RS', 'HR', 'SI', 'ME', 'BA', 'MK']) {
+        final stations = await repository.searchStations(
+          StationSearchQuery(countryCode: countryCode),
+        );
+        expect(stations, hasLength(1), reason: countryCode);
+      }
+
+      final germanStations = await repository.searchStations(
+        const StationSearchQuery(countryCode: 'DE'),
+      );
+      expect(germanStations, isEmpty);
+    },
+  );
+
+  testWidgets('diaspora stations show a badge and broadcast country', (
+    tester,
+  ) async {
+    final settingsStore = InMemorySettingsStore(
+      const AppSettings(countryCodes: <String>['RS']),
+    );
+    final controller = await RadioAppController.bootstrap(
+      repository: SingleStationCatalogRepository(
+        RadioStation.fromJson(<String, dynamic>{
+          'stationuuid': 'diaspora-station',
+          'name': 'Diaspora Station',
+          'url': 'https://example.com/stream',
+          'url_resolved': 'https://example.com/stream',
+          'country': 'Dijaspora',
+          'countrycode': '',
+          'state': 'Germany',
+          'tags': 'folk',
+        }),
+      ),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Diaspora Station'), findsOneWidget);
+    expect(find.text('Diaspora'), findsOneWidget);
+    expect(find.text('Germany • folk'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Station countries'));
+    await tester.tap(find.text('Station countries'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Diaspora stations are automatically included when you select any '
+        'former Yugoslav country.',
+      ),
+      findsOneWidget,
+    );
+
+    controller.dispose();
+  });
+
+  test(
+    'country setting changes reload discover stations immediately',
+    () async {
+      final settingsStore = InMemorySettingsStore(
+        const AppSettings(countryCodes: <String>['RS']),
+      );
+      final controller = await RadioAppController.bootstrap(
+        repository: StaticCatalogStationRepository(<RadioStation>[
+          RadioStation.fromJson(<String, dynamic>{
+            'stationuuid': 'serbian-impuls',
+            'name': 'Impuls Radio',
+            'url': 'https://example.com/serbia',
+            'url_resolved': 'https://example.com/serbia',
+            'country': 'Srbija',
+            'countrycode': '',
+            'state': 'Bačka Palanka',
+          }),
+          RadioStation.fromJson(<String, dynamic>{
+            'stationuuid': 'mk-impuls',
+            'name': 'Impuls Radio',
+            'url': 'https://example.com/macedonia',
+            'url_resolved': 'https://example.com/macedonia',
+            'country': 'Makedonija',
+            'countrycode': '',
+          }),
+        ]),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: settingsStore,
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+      );
+
+      expect(
+        controller.discoverStations.map((station) => station.displayName),
+        <String>['Impuls Radio'],
+      );
+
+      await controller.setCountryCodes(<String>['RS', 'MK']);
+
+      expect(controller.discoverStations, hasLength(2));
+      expect(
+        controller.discoverStations.map((station) => station.countryCode),
+        containsAll(<String>['RS', 'MK']),
+      );
+      expect(settingsStore.settings.countryCodes, <String>['RS', 'MK']);
+
+      controller.dispose();
+    },
+  );
+
   test('controller persists settings changes', () async {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
@@ -935,6 +1065,17 @@ class SingleStationCatalogRepository extends CatalogStationRepository {
   @override
   Future<List<RadioStation>> loadCatalog() async {
     return <RadioStation>[station];
+  }
+}
+
+class StaticCatalogStationRepository extends CatalogStationRepository {
+  StaticCatalogStationRepository(this.stations);
+
+  final List<RadioStation> stations;
+
+  @override
+  Future<List<RadioStation>> loadCatalog() async {
+    return stations;
   }
 }
 

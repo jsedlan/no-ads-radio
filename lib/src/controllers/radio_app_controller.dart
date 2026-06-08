@@ -376,26 +376,40 @@ class RadioAppController extends ChangeNotifier {
 
   List<RadioStation> _deduplicateStations(List<RadioStation> stations) {
     final seenIds = <String>{};
-    final seenNames = <String>{};
+    final seenNameLocations = <String>{};
     final result = <RadioStation>[];
 
     for (final station in stations) {
       final stationId = station.stationUuid.trim();
-      final stationName = station.displayName.toLowerCase();
+      final stationNameLocation =
+          '${station.displayName.toLowerCase()}|'
+          '${station.displayLocation.toLowerCase()}';
       if (stationId.isNotEmpty && seenIds.contains(stationId)) {
         continue;
       }
-      if (seenNames.contains(stationName)) {
+      if (seenNameLocations.contains(stationNameLocation)) {
         continue;
       }
       if (stationId.isNotEmpty) {
         seenIds.add(stationId);
       }
-      seenNames.add(stationName);
+      seenNameLocations.add(stationNameLocation);
       result.add(station);
     }
 
     return List<RadioStation>.unmodifiable(result);
+  }
+
+  bool _sameStringValues(List<String> first, List<String> second) {
+    if (first.length != second.length) {
+      return false;
+    }
+    for (var index = 0; index < first.length; index += 1) {
+      if (first[index] != second[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   List<RadioStation> favoritesForCategory(String categoryId) {
@@ -770,15 +784,30 @@ class RadioAppController extends ChangeNotifier {
   }
 
   Future<void> setCountryCodes(List<String> values) async {
-    countryCodes = List<String>.unmodifiable(
+    final normalizedCountryCodes = List<String>.unmodifiable(
       values
           .map((value) => value.trim().toUpperCase())
           .where((value) => value.isNotEmpty)
           .toSet()
           .toList(growable: false),
     );
+    if (_sameStringValues(countryCodes, normalizedCountryCodes)) {
+      return;
+    }
+    countryCodes = normalizedCountryCodes;
+    isRefreshingDiscover = true;
     notifyListeners();
-    await _saveSettings();
+
+    try {
+      discoverStations = await _loadDiscoverStations();
+      discoverError = null;
+      await _saveSettings();
+    } catch (error) {
+      discoverError = _errorMessage(error);
+    } finally {
+      isRefreshingDiscover = false;
+      notifyListeners();
+    }
   }
 
   String get suggestedCountryCode {

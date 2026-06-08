@@ -323,7 +323,13 @@ List<RadioStation> _filterStationsByCountryCodesInOrder(
   }
 
   final stationsByCountry = <String, List<RadioStation>>{};
+  final diasporaStations = <RadioStation>[];
   for (final station in stations) {
+    if (station.isDiaspora) {
+      diasporaStations.add(station);
+      continue;
+    }
+
     final stationCountryCode = station.countryCode.trim().toUpperCase();
     if (!normalizedCountryCodes.contains(stationCountryCode)) {
       continue;
@@ -339,6 +345,9 @@ List<RadioStation> _filterStationsByCountryCodesInOrder(
     orderedStations.addAll(
       stationsByCountry[countryCode] ?? const <RadioStation>[],
     );
+  }
+  if (normalizedCountryCodes.any(RadioStation.diasporaCountryCodes.contains)) {
+    orderedStations.addAll(diasporaStations);
   }
 
   return orderedStations;
@@ -418,11 +427,34 @@ class _StationTile extends StatelessWidget {
         leading: controller.showStationIcon
             ? _StationArtwork(station: station)
             : null,
-        title: Text(
-          station.displayName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: stationTitleStyle,
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                station.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: stationTitleStyle,
+              ),
+            ),
+            if (station.isDiaspora) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Diaspora',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         subtitle: Text(
           _stationSubtitle(station),
@@ -480,7 +512,9 @@ class _StationTile extends StatelessWidget {
 }
 
 String _stationSubtitle(RadioStation station) {
-  final country = station.country.trim().isNotEmpty
+  final country = station.isDiaspora
+      ? station.state.trim()
+      : station.country.trim().isNotEmpty
       ? station.country.trim()
       : station.countryCode.trim();
   return [

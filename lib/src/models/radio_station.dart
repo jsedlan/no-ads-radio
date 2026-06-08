@@ -1,6 +1,15 @@
 import 'dart:convert';
 
 class RadioStation {
+  static const Set<String> diasporaCountryCodes = <String>{
+    'RS',
+    'HR',
+    'SI',
+    'ME',
+    'BA',
+    'MK',
+  };
+
   const RadioStation({
     required this.stationUuid,
     required this.name,
@@ -141,6 +150,13 @@ class RadioStation {
       .join(' • ');
 
   bool get hasArtwork => favicon.trim().isNotEmpty;
+
+  bool get isDiaspora => country.trim().toLowerCase() == 'dijaspora';
+
+  bool isDiasporaForCountryCode(String value) {
+    return isDiaspora &&
+        diasporaCountryCodes.contains(value.trim().toUpperCase());
+  }
 
   String get identityKey {
     final uuid = stationUuid.trim();
