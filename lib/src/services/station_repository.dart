@@ -11,3 +11,7 @@ abstract class StationRepository {
   });
   Future<String> resolveStreamUrl(String stationUuid);
 }
+
+abstract interface class StationCatalogMetrics {
+  Future<int> countStations();
+}

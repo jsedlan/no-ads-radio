@@ -1,42 +1,69 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/radio_station.dart';
 import 'station_catalog_json.dart';
 
 class LocalStationsService {
+  LocalStationsService({File? cacheFile}) : _cacheFile = cacheFile;
+
   static const String _assetPath = 'assets/stationList.json';
-  static const String _cachedCatalogKey = 'cached_station_catalog_json';
+  static const String _cacheFileName = 'no_ads_radio_station_catalog.json';
 
   List<RadioStation> _stations = const <RadioStation>[];
+  final File? _cacheFile;
 
-  Future<void> initialize({SharedPreferences? preferences}) async {
-    final cachedCatalog = preferences?.getString(_cachedCatalogKey);
-    if (cachedCatalog != null && cachedCatalog.trim().isNotEmpty) {
+  Future<void> initialize() async {
+    final cacheFile = _resolvedCacheFile;
+    if (await cacheFile.exists()) {
       try {
-        _stations = parseStationCatalogJson(cachedCatalog);
-        return;
+        final cachedCatalog = await cacheFile.readAsString();
+        if (cachedCatalog.trim().isNotEmpty) {
+          _stations = (await parseStationCatalogJsonInBackground(
+            cachedCatalog,
+          )).stations;
+          return;
+        }
       } catch (_) {
-        await preferences?.remove(_cachedCatalogKey);
+        await _deleteCacheFile(cacheFile);
       }
     }
 
     try {
       final stationData = await rootBundle.loadString(_assetPath);
-      _stations = parseStationCatalogJson(stationData);
+      _stations = (await parseStationCatalogJsonInBackground(
+        stationData,
+      )).stations;
     } catch (e) {
       // If assets fail to load, just start with empty local stations.
       _stations = const <RadioStation>[];
     }
   }
 
-  Future<void> replaceWithCatalogJson(
-    String catalogJson, {
-    required SharedPreferences preferences,
-  }) async {
-    _stations = parseStationCatalogJson(catalogJson);
-    await preferences.setString(_cachedCatalogKey, catalogJson);
+  Future<int> replaceWithCatalogJson(String catalogJson) async {
+    final parseResult = await parseStationCatalogJsonInBackground(catalogJson);
+    _stations = parseResult.stations;
+    await _resolvedCacheFile.writeAsString(catalogJson, flush: true);
+    return parseResult.objectCount;
   }
 
   List<RadioStation> get allStations => _stations;
+
+  File get _resolvedCacheFile {
+    return _cacheFile ??
+        File(
+          '${Directory.systemTemp.path}${Platform.pathSeparator}$_cacheFileName',
+        );
+  }
+
+  Future<void> _deleteCacheFile(File cacheFile) async {
+    try {
+      if (await cacheFile.exists()) {
+        await cacheFile.delete();
+      }
+    } catch (_) {
+      // Keep falling back to bundled stations.
+    }
+  }
 }

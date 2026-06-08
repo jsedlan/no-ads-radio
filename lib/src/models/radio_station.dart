@@ -142,6 +142,21 @@ class RadioStation {
 
   bool get hasArtwork => favicon.trim().isNotEmpty;
 
+  String get identityKey {
+    final uuid = stationUuid.trim();
+    if (uuid.isNotEmpty) {
+      return uuid;
+    }
+
+    final streamUrl = bestStreamUrl;
+    if (streamUrl.isNotEmpty) {
+      return 'stream:$streamUrl';
+    }
+
+    return 'station:${displayName.toLowerCase()}|'
+        '${displayLocation.toLowerCase()}';
+  }
+
   String get bestStreamUrl {
     if (urlResolved.trim().isNotEmpty) {
       return urlResolved.trim();
@@ -225,6 +240,7 @@ class RadioStation {
       case 'bih':
       case 'bosna i hercegovina':
         return 'BA';
+      case 'serbia':
       case 'srbija':
         return 'RS';
       case 'hrvatska':

@@ -2,8 +2,14 @@ import '../models/radio_station.dart';
 import '../models/search_query.dart';
 import 'station_repository.dart';
 
-abstract class CatalogStationRepository implements StationRepository {
+abstract class CatalogStationRepository
+    implements StationRepository, StationCatalogMetrics {
   Future<List<RadioStation>> loadCatalog();
+
+  @override
+  Future<int> countStations() async {
+    return (await loadCatalog()).length;
+  }
 
   @override
   Future<List<RadioStation>> fetchTopClicked({int limit = 12}) async {

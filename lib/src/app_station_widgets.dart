@@ -63,29 +63,71 @@ class _DebugView extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         final station = controller.currentStation;
-        if (station == null) {
-          return Text(
-            'No station is currently playing.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: _mutedTextColor(context)),
-          );
-        }
-
-        final payload = const JsonEncoder.withIndent(
-          '  ',
-        ).convert(station.toJson());
         return SingleChildScrollView(
-          child: SelectableText(
-            payload,
-            style: GoogleFonts.notoSansMono(
-              textStyle: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(height: 1.5),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _DebugStatRow(
+                label: 'Sedlan catalog objects',
+                value: controller.remoteStationCatalog.debugLabel,
+              ),
+              const SizedBox(height: 20),
+              _DebugStatRow(
+                label: 'Playable catalog stations',
+                value: controller.loadedStationCount.toString(),
+              ),
+              const SizedBox(height: 20),
+              if (station == null)
+                Text(
+                  'No station is currently playing.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: _mutedTextColor(context),
+                  ),
+                )
+              else
+                SelectableText(
+                  const JsonEncoder.withIndent('  ').convert(station.toJson()),
+                  style: GoogleFonts.notoSansMono(
+                    textStyle: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.5),
+                  ),
+                ),
+            ],
           ),
         );
       },
+    );
+  }
+}
+
+class _DebugStatRow extends StatelessWidget {
+  const _DebugStatRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: _mutedTextColor(context),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -158,7 +200,7 @@ class _StationList extends StatelessWidget {
         itemBuilder: (context, index) {
           final station = stations[index];
           return Column(
-            key: ValueKey(station.stationUuid),
+            key: ValueKey(station.identityKey),
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
@@ -308,8 +350,8 @@ class _StationTile extends StatelessWidget {
       textStyle: theme.textTheme.bodyMedium,
     );
     final isCurrent =
-        controller.currentStation?.stationUuid == station.stationUuid;
-    final isFavorite = controller.isFavorite(station.stationUuid);
+        controller.currentStation?.identityKey == station.identityKey;
+    final isFavorite = controller.isFavorite(station.identityKey);
 
     final tile = Card(
       margin: EdgeInsets.zero,

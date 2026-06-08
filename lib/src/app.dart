@@ -128,7 +128,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
     final category = _visibleCategories(
       controller.favoriteCategories,
     )[categoryIndex];
-    if (!controller.isFavorite(station.stationUuid, categoryId: category.id)) {
+    if (!controller.isFavorite(station.identityKey, categoryId: category.id)) {
       await controller.toggleFavorite(station, categoryId: category.id);
     }
     controller.selectTab(categoryIndex + 1);
@@ -288,7 +288,7 @@ class _TopTabBar extends StatelessWidget {
           final target = DragTarget<RadioStation>(
             onWillAcceptWithDetails: (details) {
               final canAccept = !controller.isFavorite(
-                details.data.stationUuid,
+                details.data.identityKey,
                 categoryId: category.id,
               );
               onFavoriteDropTargetChanged(canAccept ? index : null);
@@ -641,6 +641,7 @@ class _DiscoverTab extends StatelessWidget {
     return _StationTabContent(
       stationCount: stations.length,
       isFiltered: controller.discoverFilter.trim().isNotEmpty,
+      onClearFilter: () => controller.setDiscoverFilter(''),
       child: RefreshIndicator(
         onRefresh: controller.refreshDiscover,
         child: _StationList(
@@ -689,15 +690,25 @@ class _StationTabContent extends StatelessWidget {
     required this.child,
     required this.stationCount,
     this.isFiltered = false,
+    this.onClearFilter,
   });
 
   final Widget child;
   final int stationCount;
   final bool isFiltered;
+  final VoidCallback? onClearFilter;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final countLabel = Text(
+      _stationCountLabel(stationCount, isFiltered: isFiltered),
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: _mutedTextColor(context),
+        fontWeight: FontWeight.w600,
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -705,14 +716,44 @@ class _StationTabContent extends StatelessWidget {
           Expanded(child: child),
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 6, 0, 10),
-            child: Text(
-              _stationCountLabel(stationCount, isFiltered: isFiltered),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: _mutedTextColor(context),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: isFiltered
+                ? Row(
+                    children: [
+                      Expanded(child: countLabel),
+                      Tooltip(
+                        message: 'Clear filter',
+                        child: InkWell(
+                          onTap: onClearFilter,
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 2,
+                              vertical: 1,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Clear',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.close_rounded,
+                                  size: 14,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Center(child: countLabel),
           ),
         ],
       ),

@@ -2,14 +2,21 @@ package com.example.no_ads_radio
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.content.Context
+import java.io.File
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.ryanheise.audioservice.AudioServiceActivity
 
 class MainActivity : AudioServiceActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        deleteOversizedLegacyPreferences()
+        super.onCreate(savedInstanceState)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -64,5 +71,26 @@ class MainActivity : AudioServiceActivity() {
     private fun isIgnoringBatteryOptimizations(): Boolean {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         return powerManager.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun deleteOversizedLegacyPreferences() {
+        val maxReasonablePreferencesBytes = 8L * 1024L * 1024L
+        val sharedPrefsDirectory = File(applicationInfo.dataDir, "shared_prefs")
+        val preferenceFiles = sharedPrefsDirectory.listFiles() ?: return
+
+        preferenceFiles
+            .filter { file ->
+                file.isFile &&
+                    file.extension == "xml" &&
+                    file.length() > maxReasonablePreferencesBytes
+            }
+            .forEach { file ->
+                try {
+                    file.delete()
+                    File("${file.absolutePath}.bak").delete()
+                } catch (_: Exception) {
+                    // Continue startup; Dart has a fallback cleanup too.
+                }
+            }
     }
 }

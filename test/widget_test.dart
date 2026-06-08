@@ -8,9 +8,11 @@ import 'package:no_ads_radio/src/controllers/radio_app_controller.dart';
 import 'package:no_ads_radio/src/models/radio_station.dart';
 import 'package:no_ads_radio/src/models/search_query.dart';
 import 'package:no_ads_radio/src/services/connectivity_service.dart';
+import 'package:no_ads_radio/src/services/catalog_station_repository.dart';
 import 'package:no_ads_radio/src/services/fallback_station_repository.dart';
 import 'package:no_ads_radio/src/services/favorites_store.dart';
 import 'package:no_ads_radio/src/services/settings_store.dart';
+import 'package:no_ads_radio/src/services/station_catalog_json.dart';
 import 'package:no_ads_radio/src/services/station_repository.dart';
 
 void main() {
@@ -83,6 +85,116 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('filtered station count provides a clear filter action', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    controller.setDiscoverFilter('Test Station 1');
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 filtered station'), findsOneWidget);
+    expect(find.byTooltip('Clear filter'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Clear filter'));
+    await tester.pumpAndSettle();
+
+    expect(controller.discoverFilter, isEmpty);
+    expect(find.text('4 stations'), findsOneWidget);
+    expect(find.byTooltip('Clear filter'), findsNothing);
+
+    controller.dispose();
+  });
+
+  testWidgets('debug view shows sedlan and playable station counts', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Debug view').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sedlan catalog objects'), findsOneWidget);
+    expect(find.text('Not loaded yet'), findsOneWidget);
+    expect(find.text('Playable catalog stations'), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
+  });
+
+  test('station catalog object count includes unplayable sedlan objects', () {
+    final objectCount = countStationCatalogJsonObjects('''
+      {
+        "stations": [
+          {"stationuuid": "station-1", "name": "Station 1"},
+          {"stationuuid": "station-2", "name": "Station 2", "url": ""}
+        ]
+      }
+    ''');
+
+    expect(objectCount, 2);
+  });
+
+  test(
+    'controller records remote catalog load failure for debug view',
+    () async {
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+      );
+
+      controller.markRemoteStationCatalogFailed(Exception('offline'));
+
+      expect(
+        controller.remoteStationCatalog.status,
+        RemoteStationCatalogStatus.failed,
+      );
+      expect(controller.remoteStationCatalog.debugLabel, contains('offline'));
+    },
+  );
+
+  test(
+    'controller counts full catalog, not filtered discover stations',
+    () async {
+      final settingsStore = InMemorySettingsStore();
+      await settingsStore.saveSettings(
+        const AppSettings(countryCodes: <String>['RS']),
+      );
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeCatalogStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: settingsStore,
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+      );
+
+      expect(controller.discoverStations, hasLength(3));
+      expect(controller.loadedStationCount, 6);
+    },
+  );
+
   test(
     'fallback repository uses later source when earlier one fails',
     () async {
@@ -110,6 +222,42 @@ void main() {
 
     expect(station.countryCode, 'RS');
   });
+
+  test('station parser derives country code for English Serbia country', () {
+    final station = RadioStation.fromJson(<String, dynamic>{
+      'stationuuid': 'serbian-station',
+      'name': 'Serbian Station',
+      'url': 'https://example.com/stream',
+      'url_resolved': 'https://example.com/stream',
+      'country': 'Serbia',
+      'countrycode': '',
+    });
+
+    expect(station.countryCode, 'RS');
+  });
+
+  test(
+    'catalog country search includes Serbia stations without countrycode',
+    () async {
+      final repository = SingleStationCatalogRepository(
+        RadioStation.fromJson(<String, dynamic>{
+          'stationuuid': 'serbian-station',
+          'name': 'Serbian Station',
+          'url': 'https://example.com/stream',
+          'url_resolved': 'https://example.com/stream',
+          'country': 'Serbia',
+          'countrycode': '',
+        }),
+      );
+
+      final stations = await repository.searchStations(
+        const StationSearchQuery(countryCode: 'RS'),
+      );
+
+      expect(stations, hasLength(1));
+      expect(stations.single.stationUuid, 'serbian-station');
+    },
+  );
 
   test('controller persists settings changes', () async {
     final settingsStore = InMemorySettingsStore();
@@ -259,6 +407,36 @@ void main() {
     controller.dispose();
   });
 
+  test('favorites distinguish stations with missing UUIDs', () async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+    final first = _stationWithoutUuid(
+      name: 'First Station',
+      streamUrl: 'https://example.com/first',
+    );
+    final second = _stationWithoutUuid(
+      name: 'Second Station',
+      streamUrl: 'https://example.com/second',
+    );
+
+    await controller.toggleFavorite(first);
+
+    expect(controller.isFavorite(first.identityKey), isTrue);
+    expect(controller.isFavorite(second.identityKey), isFalse);
+
+    await controller.toggleFavorite(first);
+
+    expect(controller.isFavorite(first.identityKey), isFalse);
+    expect(controller.isFavorite(second.identityKey), isFalse);
+
+    controller.dispose();
+  });
+
   testWidgets('shows offline badge when connectivity is down', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
@@ -363,6 +541,59 @@ void main() {
     },
   );
 
+  test(
+    'controller does not notify listeners for position-only playback ticks',
+    () async {
+      final audioEngine = FakeAudioEngine();
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: audioEngine,
+        connectivityService: FakeConnectivityService.online(),
+      );
+
+      var notificationCount = 0;
+      void countNotification() {
+        notificationCount += 1;
+      }
+
+      controller.addListener(countNotification);
+      audioEngine.emitSnapshot(
+        const PlaybackSnapshot(
+          status: PlaybackStatus.playing,
+          nowPlaying: NowPlayingMetadata(title: 'Artist - Song'),
+        ),
+      );
+      expect(notificationCount, 1);
+
+      notificationCount = 0;
+      audioEngine.emitSnapshot(
+        const PlaybackSnapshot(
+          status: PlaybackStatus.playing,
+          nowPlaying: NowPlayingMetadata(title: 'Artist - Song'),
+          position: Duration(milliseconds: 500),
+        ),
+      );
+
+      expect(controller.playback.position, const Duration(milliseconds: 500));
+      expect(notificationCount, 0);
+
+      audioEngine.emitSnapshot(
+        const PlaybackSnapshot(
+          status: PlaybackStatus.playing,
+          nowPlaying: NowPlayingMetadata(title: 'Artist - Next Song'),
+          position: Duration(milliseconds: 750),
+        ),
+      );
+
+      expect(notificationCount, 1);
+
+      controller.removeListener(countNotification);
+      controller.dispose();
+    },
+  );
+
   test('sleep timer stops playback when it expires', () async {
     final audioEngine = FakeAudioEngine();
     final controller = await RadioAppController.bootstrap(
@@ -418,6 +649,32 @@ void main() {
 
     controller.dispose();
   });
+}
+
+RadioStation _stationWithoutUuid({
+  required String name,
+  required String streamUrl,
+}) {
+  return RadioStation(
+    stationUuid: '',
+    name: name,
+    url: streamUrl,
+    urlResolved: streamUrl,
+    homepage: '',
+    favicon: '',
+    tags: '',
+    country: '',
+    countryCode: '',
+    state: '',
+    language: '',
+    codec: 'MP3',
+    bitrate: 128,
+    votes: 0,
+    clickCount: 0,
+    clickTrend: 0,
+    lastCheckOk: true,
+    hls: false,
+  );
 }
 
 class FakeStationRepository implements StationRepository {
@@ -482,6 +739,47 @@ class FakeStationRepository implements StationRepository {
       ),
       growable: false,
     );
+  }
+}
+
+class FakeCatalogStationRepository extends CatalogStationRepository {
+  @override
+  Future<List<RadioStation>> loadCatalog() async {
+    return List<RadioStation>.generate(
+      6,
+      (index) => RadioStation(
+        stationUuid: 'catalog-station-$index',
+        name: 'Catalog Station ${index + 1}',
+        url: 'https://example.com/catalog/$index',
+        urlResolved: 'https://example.com/catalog/$index/stream',
+        homepage: '',
+        favicon: '',
+        tags: 'test',
+        country: index.isEven ? 'Serbia' : 'Germany',
+        countryCode: index.isEven ? 'RS' : 'DE',
+        state: '',
+        language: 'english',
+        codec: 'MP3',
+        bitrate: 128,
+        votes: 10,
+        clickCount: 20,
+        clickTrend: 2,
+        lastCheckOk: true,
+        hls: false,
+      ),
+      growable: false,
+    );
+  }
+}
+
+class SingleStationCatalogRepository extends CatalogStationRepository {
+  SingleStationCatalogRepository(this.station);
+
+  final RadioStation station;
+
+  @override
+  Future<List<RadioStation>> loadCatalog() async {
+    return <RadioStation>[station];
   }
 }
 

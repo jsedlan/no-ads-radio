@@ -13,6 +13,41 @@ import '../services/station_repository.dart';
 
 enum PlaybackStallReason { internetOutage, streamFailure }
 
+enum RemoteStationCatalogStatus { notLoaded, loading, loaded, failed }
+
+class RemoteStationCatalogSnapshot {
+  const RemoteStationCatalogSnapshot({
+    required this.status,
+    this.objectCount,
+    this.errorMessage,
+  });
+
+  const RemoteStationCatalogSnapshot.notLoaded()
+    : status = RemoteStationCatalogStatus.notLoaded,
+      objectCount = null,
+      errorMessage = null;
+
+  final RemoteStationCatalogStatus status;
+  final int? objectCount;
+  final String? errorMessage;
+
+  String get debugLabel {
+    switch (status) {
+      case RemoteStationCatalogStatus.notLoaded:
+        return 'Not loaded yet';
+      case RemoteStationCatalogStatus.loading:
+        return 'Loading';
+      case RemoteStationCatalogStatus.loaded:
+        return objectCount?.toString() ?? 'Loaded';
+      case RemoteStationCatalogStatus.failed:
+        final message = errorMessage?.trim();
+        return message == null || message.isEmpty
+            ? 'Failed'
+            : 'Failed: $message';
+    }
+  }
+}
+
 class RadioAppController extends ChangeNotifier {
   RadioAppController._({
     required StationRepository repository,
@@ -79,6 +114,9 @@ class RadioAppController extends ChangeNotifier {
   List<RadioStation> searchResults = const <RadioStation>[];
   List<RadioStation> manualStations = const <RadioStation>[];
   List<RadioStation> recentlyPlayedStations = const <RadioStation>[];
+  int loadedStationCount = 0;
+  RemoteStationCatalogSnapshot remoteStationCatalog =
+      const RemoteStationCatalogSnapshot.notLoaded();
   Map<String, List<RadioStation>> favoritesByCategory =
       const <String, List<RadioStation>>{};
 
@@ -204,14 +242,40 @@ class RadioAppController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final catalogStationCount = await _catalogStationCount();
       discoverStations = await _loadDiscoverStations();
+      loadedStationCount = catalogStationCount ?? discoverStations.length;
     } catch (error) {
       discoverError = _errorMessage(error);
       discoverStations = const <RadioStation>[];
+      loadedStationCount = 0;
     } finally {
       isRefreshingDiscover = false;
       notifyListeners();
     }
+  }
+
+  void markRemoteStationCatalogLoading() {
+    remoteStationCatalog = const RemoteStationCatalogSnapshot(
+      status: RemoteStationCatalogStatus.loading,
+    );
+    notifyListeners();
+  }
+
+  void markRemoteStationCatalogLoaded({required int objectCount}) {
+    remoteStationCatalog = RemoteStationCatalogSnapshot(
+      status: RemoteStationCatalogStatus.loaded,
+      objectCount: objectCount,
+    );
+    notifyListeners();
+  }
+
+  void markRemoteStationCatalogFailed(Object error) {
+    remoteStationCatalog = RemoteStationCatalogSnapshot(
+      status: RemoteStationCatalogStatus.failed,
+      errorMessage: _errorMessage(error),
+    );
+    notifyListeners();
   }
 
   Future<List<RadioStation>> _loadDiscoverStations() async {
@@ -239,6 +303,14 @@ class RadioAppController extends ChangeNotifier {
 
     stations.addAll(merged);
     return _deduplicateStations(stations);
+  }
+
+  Future<int?> _catalogStationCount() async {
+    final repository = _repository;
+    if (repository is StationCatalogMetrics) {
+      return (repository as StationCatalogMetrics).countStations();
+    }
+    return null;
   }
 
   List<RadioStation> _deduplicateStations(List<RadioStation> stations) {
@@ -344,7 +416,7 @@ class RadioAppController extends ChangeNotifier {
     for (final category in favoriteCategories) {
       if (favoritesForCategory(
         category.id,
-      ).any((item) => item.stationUuid == station.stationUuid)) {
+      ).any((item) => item.identityKey == station.identityKey)) {
         return category.id;
       }
     }
@@ -378,7 +450,7 @@ class RadioAppController extends ChangeNotifier {
       favoritesForCategory(targetCategory),
     );
     final existingIndex = currentFavorites.indexWhere(
-      (item) => item.stationUuid == station.stationUuid,
+      (item) => item.identityKey == station.identityKey,
     );
 
     if (existingIndex >= 0) {
@@ -445,13 +517,13 @@ class RadioAppController extends ChangeNotifier {
       return favoriteCategories.any(
         (category) => favoritesForCategory(
           category.id,
-        ).any((station) => station.stationUuid == stationUuid),
+        ).any((station) => station.identityKey == stationUuid),
       );
     }
 
     return favoritesForCategory(
       _normalizedFavoriteCategoryId(categoryId),
-    ).any((station) => station.stationUuid == stationUuid);
+    ).any((station) => station.identityKey == stationUuid);
   }
 
   Future<void> playStation(
@@ -828,8 +900,9 @@ class RadioAppController extends ChangeNotifier {
   }
 
   void _handlePlaybackSnapshot() {
+    final previousPlayback = playback;
     playback = _audioEngine.snapshot.value;
-    _trackPlaybackProgress(
+    final didUpdatePlaybackStallDisplay = _trackPlaybackProgress(
       position: playback.position,
       bufferedPosition: playback.bufferedPosition,
     );
@@ -838,7 +911,10 @@ class RadioAppController extends ChangeNotifier {
     } else {
       _stopPlaybackStallWatchdog();
     }
-    notifyListeners();
+    if (_playbackDisplayChanged(previousPlayback, playback) ||
+        didUpdatePlaybackStallDisplay) {
+      notifyListeners();
+    }
   }
 
   void _handleConnectivitySnapshot() {
@@ -846,12 +922,14 @@ class RadioAppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _trackPlaybackProgress({
+  bool _trackPlaybackProgress({
     required Duration position,
     required Duration bufferedPosition,
   }) {
     if (position > _lastObservedPosition ||
         bufferedPosition > _lastObservedBufferedPosition) {
+      final wasStalled = playbackStalled;
+      final previousStallReason = playbackStallReason;
       _stopInternetRecoveryRetryLoop();
       _lastObservedPosition = position;
       _lastObservedBufferedPosition = bufferedPosition;
@@ -859,9 +937,31 @@ class RadioAppController extends ChangeNotifier {
       playbackStalled = false;
       playbackStallReason = null;
       _isHandlingPlaybackStall = false;
+      return wasStalled != playbackStalled ||
+          previousStallReason != playbackStallReason;
     } else if (_lastPositionAdvancedAt == null && playback.isPlaying) {
       _lastPositionAdvancedAt = DateTime.now();
     }
+    return false;
+  }
+
+  bool _playbackDisplayChanged(
+    PlaybackSnapshot previous,
+    PlaybackSnapshot next,
+  ) {
+    return previous.status != next.status ||
+        previous.message != next.message ||
+        !_nowPlayingMetadataMatches(previous.nowPlaying, next.nowPlaying);
+  }
+
+  bool _nowPlayingMetadataMatches(
+    NowPlayingMetadata? previous,
+    NowPlayingMetadata? next,
+  ) {
+    return previous?.title == next?.title &&
+        previous?.url == next?.url &&
+        previous?.stationName == next?.stationName &&
+        previous?.genre == next?.genre;
   }
 
   void _startPlaybackStallWatchdog() {
@@ -945,7 +1045,7 @@ class RadioAppController extends ChangeNotifier {
     }
 
     final currentIndex = stations.indexWhere(
-      (item) => item.stationUuid == station.stationUuid,
+      (item) => item.identityKey == station.identityKey,
     );
     if (currentIndex < 0) {
       return null;
@@ -971,7 +1071,7 @@ class RadioAppController extends ChangeNotifier {
     }
 
     final currentIndex = stations.indexWhere(
-      (item) => item.stationUuid == station.stationUuid,
+      (item) => item.identityKey == station.identityKey,
     );
     if (currentIndex < 0) {
       return null;

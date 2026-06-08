@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:audio_session/audio_session.dart';
@@ -26,9 +27,10 @@ Future<void> main() async {
   final session = await AudioSession.instance;
   await session.configure(const AudioSessionConfiguration.music());
 
+  await _deleteOversizedLegacyCatalogPreferences();
   final preferences = await SharedPreferences.getInstance();
   final localStations = LocalStationsService();
-  await localStations.initialize(preferences: preferences);
+  await localStations.initialize();
   const remoteCatalogUrl = 'https://api.noadsradio.sedlan.com/stations';
   final remoteStations = RemoteJsonStationRepository(
     catalogUrl: remoteCatalogUrl,
@@ -53,7 +55,6 @@ Future<void> main() async {
     _refreshStationCatalog(
       remoteStations: remoteStations,
       localStations: localStations,
-      preferences: preferences,
       controller: controller,
     ),
   );
@@ -62,17 +63,40 @@ Future<void> main() async {
 Future<void> _refreshStationCatalog({
   required RemoteJsonStationRepository remoteStations,
   required LocalStationsService localStations,
-  required SharedPreferences preferences,
   required RadioAppController controller,
 }) async {
+  controller.markRemoteStationCatalogLoading();
   try {
     final catalogJson = await remoteStations.fetchCatalogJson();
-    await localStations.replaceWithCatalogJson(
-      catalogJson,
-      preferences: preferences,
-    );
+    final objectCount = await localStations.replaceWithCatalogJson(catalogJson);
+    controller.markRemoteStationCatalogLoaded(objectCount: objectCount);
     await controller.refreshDiscover();
-  } catch (_) {
+  } catch (error) {
+    controller.markRemoteStationCatalogFailed(error);
     // Keep using the cached or bundled station list.
+  }
+}
+
+Future<void> _deleteOversizedLegacyCatalogPreferences() async {
+  if (!Platform.isAndroid) {
+    return;
+  }
+
+  const maxReasonablePreferencesBytes = 8 * 1024 * 1024;
+  const legacyPreferenceFiles = <String>[
+    '/data/data/com.example.no_ads_radio/shared_prefs/FlutterSharedPreferences.xml',
+    '/data/user/0/com.example.no_ads_radio/shared_prefs/FlutterSharedPreferences.xml',
+  ];
+
+  for (final path in legacyPreferenceFiles) {
+    try {
+      final file = File(path);
+      if (await file.exists() &&
+          await file.length() > maxReasonablePreferencesBytes) {
+        await file.delete();
+      }
+    } catch (_) {
+      // If this path is not readable, continue startup normally.
+    }
   }
 }
