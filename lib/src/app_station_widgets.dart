@@ -62,36 +62,42 @@ class _DebugView extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final station = controller.currentStation;
         return SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DebugStatRow(
-                label: 'Sedlan catalog objects',
-                value: controller.remoteStationCatalog.debugLabel,
+              Text(
+                'Active source',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: _mutedTextColor(context),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              const SizedBox(height: 20),
-              _DebugStatRow(
-                label: 'Playable catalog stations',
-                value: controller.loadedStationCount.toString(),
+              const SizedBox(height: 4),
+              Text(
+                controller.activeCatalogSource?.label ?? 'No source loaded',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 20),
-              if (station == null)
+              const SizedBox(height: 24),
+              Text(
+                'Station loading log',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 10),
+              if (controller.catalogLoadEvents.isEmpty)
                 Text(
-                  'No station is currently playing.',
+                  'No station loading events recorded.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: _mutedTextColor(context),
                   ),
                 )
               else
-                SelectableText(
-                  const JsonEncoder.withIndent('  ').convert(station.toJson()),
-                  style: GoogleFonts.notoSansMono(
-                    textStyle: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(height: 1.5),
-                  ),
+                ...controller.catalogLoadEvents.reversed.map(
+                  (event) => _CatalogLoadEventRow(event: event),
                 ),
             ],
           ),
@@ -101,35 +107,76 @@ class _DebugView extends StatelessWidget {
   }
 }
 
-class _DebugStatRow extends StatelessWidget {
-  const _DebugStatRow({required this.label, required this.value});
+class _CatalogLoadEventRow extends StatelessWidget {
+  const _CatalogLoadEventRow({required this.event});
 
-  final String label;
-  final String value;
+  final StationCatalogLoadEvent event;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: _mutedTextColor(context),
-            fontWeight: FontWeight.w600,
+    final color = switch (event.status) {
+      StationCatalogEventStatus.success => const Color(0xFF2E7D32),
+      StationCatalogEventStatus.failure => theme.colorScheme.error,
+      StationCatalogEventStatus.loading => theme.colorScheme.primary,
+      StationCatalogEventStatus.info => _mutedTextColor(context),
+    };
+    final icon = switch (event.status) {
+      StationCatalogEventStatus.success => Icons.check_circle_outline_rounded,
+      StationCatalogEventStatus.failure => Icons.error_outline_rounded,
+      StationCatalogEventStatus.loading => Icons.downloading_rounded,
+      StationCatalogEventStatus.info => Icons.info_outline_rounded,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 18, color: color),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_formatCatalogLogTime(event.timestamp)}  '
+                  '${event.source.label}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  event.message,
+                  style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
+                ),
+                if (event.stationCount != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${event.stationCount} playable stations loaded',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+String _formatCatalogLogTime(DateTime value) {
+  String twoDigits(int number) => number.toString().padLeft(2, '0');
+  return '${twoDigits(value.hour)}:${twoDigits(value.minute)}:'
+      '${twoDigits(value.second)}';
 }
 
 class _StationList extends StatelessWidget {

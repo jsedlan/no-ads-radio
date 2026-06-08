@@ -9,6 +9,7 @@ import '../models/search_query.dart';
 import '../services/connectivity_service.dart';
 import '../services/favorites_store.dart';
 import '../services/settings_store.dart';
+import '../services/station_catalog_diagnostics.dart';
 import '../services/station_repository.dart';
 
 enum PlaybackStallReason { internetOutage, streamFailure }
@@ -58,6 +59,8 @@ class RadioAppController extends ChangeNotifier {
     required String startupCountryCode,
     required Duration playbackStallThreshold,
     required Duration playbackStallPollInterval,
+    required List<StationCatalogLoadEvent> initialCatalogLoadEvents,
+    required StationCatalogSource? initialActiveCatalogSource,
   }) : _repository = repository,
        _favoritesStore = favoritesStore,
        _settingsStore = settingsStore,
@@ -65,7 +68,11 @@ class RadioAppController extends ChangeNotifier {
        _connectivityService = connectivityService,
        _startupCountryCode = startupCountryCode,
        _playbackStallThreshold = playbackStallThreshold,
-       _playbackStallPollInterval = playbackStallPollInterval {
+       _playbackStallPollInterval = playbackStallPollInterval,
+       catalogLoadEvents = List<StationCatalogLoadEvent>.from(
+         initialCatalogLoadEvents,
+       ),
+       activeCatalogSource = initialActiveCatalogSource {
     _audioEngine.snapshot.addListener(_handlePlaybackSnapshot);
     _connectivityService.snapshot.addListener(_handleConnectivitySnapshot);
   }
@@ -79,6 +86,9 @@ class RadioAppController extends ChangeNotifier {
     String startupCountryCode = '',
     Duration playbackStallThreshold = const Duration(seconds: 8),
     Duration playbackStallPollInterval = const Duration(seconds: 1),
+    List<StationCatalogLoadEvent> initialCatalogLoadEvents =
+        const <StationCatalogLoadEvent>[],
+    StationCatalogSource? initialActiveCatalogSource,
   }) async {
     final controller = RadioAppController._(
       repository: repository,
@@ -89,6 +99,8 @@ class RadioAppController extends ChangeNotifier {
       startupCountryCode: startupCountryCode,
       playbackStallThreshold: playbackStallThreshold,
       playbackStallPollInterval: playbackStallPollInterval,
+      initialCatalogLoadEvents: initialCatalogLoadEvents,
+      initialActiveCatalogSource: initialActiveCatalogSource,
     );
     await controller._initialize();
     return controller;
@@ -111,10 +123,13 @@ class RadioAppController extends ChangeNotifier {
   static const int _recentlyPlayedLimit = 50;
 
   List<RadioStation> discoverStations = const <RadioStation>[];
+  bool hasCompletedCountrySetup = true;
   List<RadioStation> searchResults = const <RadioStation>[];
   List<RadioStation> manualStations = const <RadioStation>[];
   List<RadioStation> recentlyPlayedStations = const <RadioStation>[];
   int loadedStationCount = 0;
+  final List<StationCatalogLoadEvent> catalogLoadEvents;
+  StationCatalogSource? activeCatalogSource;
   RemoteStationCatalogSnapshot remoteStationCatalog =
       const RemoteStationCatalogSnapshot.notLoaded();
   Map<String, List<RadioStation>> favoritesByCategory =
@@ -205,17 +220,12 @@ class RadioAppController extends ChangeNotifier {
       await _connectivityService.initialize();
       connectivity = _connectivityService.snapshot.value;
       favoritesByCategory = await _favoritesStore.loadFavorites();
-      var settings = await _settingsStore.loadSettings();
-      if (settings.countryCodes.isEmpty && _startupCountryCode.isNotEmpty) {
-        settings = settings.copyWith(
-          countryCodes: <String>[_startupCountryCode],
-        );
-        await _settingsStore.saveSettings(settings);
-      }
+      final settings = await _settingsStore.loadSettings();
       themePreference = settings.themePreference;
       showStationIcon = settings.showStationIcon;
       circleThroughFavorites = settings.circleThroughFavorites;
       countryCodes = settings.countryCodes;
+      hasCompletedCountrySetup = settings.hasCompletedCountrySetup;
       manualStations = settings.manualStations;
       recentlyPlayedStations = settings.recentlyPlayedStations;
       favoriteCategories = settings.favoriteCategories.isEmpty
@@ -256,13 +266,40 @@ class RadioAppController extends ChangeNotifier {
   }
 
   void markRemoteStationCatalogLoading() {
+    _recordCatalogLoadEvent(
+      source: StationCatalogSource.sedlanGet,
+      status: StationCatalogEventStatus.loading,
+      message: 'GET https://api.noadsradio.sedlan.com/stations started.',
+    );
     remoteStationCatalog = const RemoteStationCatalogSnapshot(
       status: RemoteStationCatalogStatus.loading,
     );
     notifyListeners();
   }
 
-  void markRemoteStationCatalogLoaded({required int objectCount}) {
+  void markRemoteStationCatalogResponse({required int statusCode}) {
+    _recordCatalogLoadEvent(
+      source: StationCatalogSource.sedlanGet,
+      status: StationCatalogEventStatus.success,
+      message: 'GET succeeded with HTTP $statusCode.',
+    );
+    notifyListeners();
+  }
+
+  void markRemoteStationCatalogLoaded({
+    required int objectCount,
+    required int stationCount,
+  }) {
+    _connectivityService.reportOnline();
+    activeCatalogSource = StationCatalogSource.sedlanGet;
+    _recordCatalogLoadEvent(
+      source: StationCatalogSource.sedlanGet,
+      status: StationCatalogEventStatus.success,
+      message:
+          '$objectCount catalog objects received and parsed. '
+          'This source is now in use.',
+      stationCount: stationCount,
+    );
     remoteStationCatalog = RemoteStationCatalogSnapshot(
       status: RemoteStationCatalogStatus.loaded,
       objectCount: objectCount,
@@ -271,11 +308,35 @@ class RadioAppController extends ChangeNotifier {
   }
 
   void markRemoteStationCatalogFailed(Object error) {
+    _recordCatalogLoadEvent(
+      source: StationCatalogSource.sedlanGet,
+      status: StationCatalogEventStatus.failure,
+      message:
+          'Sedlan refresh failed: ${_errorMessage(error)} '
+          'Continuing with ${activeCatalogSource?.label ?? 'no catalog source'}.',
+    );
     remoteStationCatalog = RemoteStationCatalogSnapshot(
       status: RemoteStationCatalogStatus.failed,
       errorMessage: _errorMessage(error),
     );
     notifyListeners();
+  }
+
+  void _recordCatalogLoadEvent({
+    required StationCatalogSource source,
+    required StationCatalogEventStatus status,
+    required String message,
+    int? stationCount,
+  }) {
+    catalogLoadEvents.add(
+      StationCatalogLoadEvent(
+        timestamp: DateTime.now(),
+        source: source,
+        status: status,
+        message: message,
+        stationCount: stationCount,
+      ),
+    );
   }
 
   Future<List<RadioStation>> _loadDiscoverStations() async {
@@ -720,6 +781,25 @@ class RadioAppController extends ChangeNotifier {
     await _saveSettings();
   }
 
+  String get suggestedCountryCode {
+    if (countryCodes.isNotEmpty) {
+      return countryCodes.first.trim().toUpperCase();
+    }
+    return _startupCountryCode.trim().toUpperCase();
+  }
+
+  Future<void> completeCountrySetup(String countryCode) async {
+    final normalized = countryCode.trim().toUpperCase();
+    if (normalized.isEmpty) {
+      return;
+    }
+    countryCodes = List<String>.unmodifiable(<String>[normalized]);
+    hasCompletedCountrySetup = true;
+    discoverStations = await _loadDiscoverStations();
+    notifyListeners();
+    await _saveSettings();
+  }
+
   Future<void> setFavoriteCategories(List<String> values) async {
     final previousCategories = favoriteCategories;
     final normalized = values
@@ -892,6 +972,7 @@ class RadioAppController extends ChangeNotifier {
         showStationIcon: showStationIcon,
         circleThroughFavorites: circleThroughFavorites,
         countryCodes: countryCodes,
+        hasCompletedCountrySetup: hasCompletedCountrySetup,
         manualStations: manualStations,
         recentlyPlayedStations: recentlyPlayedStations,
         favoriteCategories: favoriteCategories,
@@ -930,6 +1011,7 @@ class RadioAppController extends ChangeNotifier {
         bufferedPosition > _lastObservedBufferedPosition) {
       final wasStalled = playbackStalled;
       final previousStallReason = playbackStallReason;
+      _connectivityService.reportOnline();
       _stopInternetRecoveryRetryLoop();
       _lastObservedPosition = position;
       _lastObservedBufferedPosition = bufferedPosition;

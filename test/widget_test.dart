@@ -13,9 +13,58 @@ import 'package:no_ads_radio/src/services/fallback_station_repository.dart';
 import 'package:no_ads_radio/src/services/favorites_store.dart';
 import 'package:no_ads_radio/src/services/settings_store.dart';
 import 'package:no_ads_radio/src/services/station_catalog_json.dart';
+import 'package:no_ads_radio/src/services/station_catalog_diagnostics.dart';
 import 'package:no_ads_radio/src/services/station_repository.dart';
 
 void main() {
+  testWidgets('first run confirms locale country before saving it', (
+    tester,
+  ) async {
+    final settingsStore = InMemorySettingsStore(
+      const AppSettings(hasCompletedCountrySetup: false),
+    );
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+      startupCountryCode: 'US',
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose your station country'), findsOneWidget);
+    expect(find.text('United States'), findsOneWidget);
+    expect(
+      find.text('You can add more countries later in Settings.'),
+      findsOneWidget,
+    );
+    expect(controller.countryCodes, isEmpty);
+
+    await tester.tap(find.text('United States'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Serbia');
+    await tester.pump();
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) => widget is Text && widget.data == 'Serbia',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(controller.hasCompletedCountrySetup, isTrue);
+    expect(controller.countryCodes, <String>['RS']);
+    expect(find.text('Choose your station country'), findsNothing);
+    expect(settingsStore.settings.hasCompletedCountrySetup, isTrue);
+    expect(settingsStore.settings.countryCodes, <String>['RS']);
+
+    controller.dispose();
+  });
+
   testWidgets('renders discover list and favorites flow', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
@@ -115,9 +164,7 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('debug view shows sedlan and playable station counts', (
-    tester,
-  ) async {
+  testWidgets('station list filters as search text changes', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
       favoritesStore: InMemoryFavoritesStore(),
@@ -129,16 +176,70 @@ void main() {
     await tester.pumpWidget(NoAdsRadioApp(controller: controller));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byTooltip('Filter stations'));
+    await tester.pumpAndSettle();
+
+    final searchField = find.byType(TextField);
+    await tester.enterText(searchField, 'Test Station');
+    await tester.pump();
+
+    expect(find.text('4 filtered stations'), findsOneWidget);
+
+    await tester.enterText(searchField, 'Test Station 2');
+    await tester.pump();
+
+    expect(controller.discoverFilter, 'Test Station 2');
+    expect(find.text('1 filtered station'), findsOneWidget);
+    expect(find.text('Test Station 1'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is Text && widget.data == 'Test Station 2',
+      ),
+      findsOneWidget,
+    );
+
+    controller.dispose();
+  });
+
+  testWidgets('debug view shows active catalog source and loading log', (
+    tester,
+  ) async {
+    final loadedAt = DateTime(2026, 6, 8, 12, 30);
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+      initialActiveCatalogSource: StationCatalogSource.cache,
+      initialCatalogLoadEvents: <StationCatalogLoadEvent>[
+        StationCatalogLoadEvent(
+          timestamp: loadedAt,
+          source: StationCatalogSource.cache,
+          status: StationCatalogEventStatus.success,
+          message: 'Loaded cached stations. This source is now in use.',
+          stationCount: 4,
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byIcon(Icons.more_vert_rounded));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Debug view').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Sedlan catalog objects'), findsOneWidget);
-    expect(find.text('Not loaded yet'), findsOneWidget);
-    expect(find.text('Playable catalog stations'), findsOneWidget);
-    expect(find.text('4'), findsOneWidget);
+    expect(find.text('Active source'), findsOneWidget);
+    expect(find.text('Cached Sedlan catalog'), findsOneWidget);
+    expect(
+      find.textContaining('12:30:00  Cached Sedlan catalog'),
+      findsOneWidget,
+    );
+    expect(find.text('Station loading log'), findsOneWidget);
+    expect(find.text('4 playable stations loaded'), findsOneWidget);
   });
 
   test('station catalog object count includes unplayable sedlan objects', () {
@@ -172,6 +273,36 @@ void main() {
         RemoteStationCatalogStatus.failed,
       );
       expect(controller.remoteStationCatalog.debugLabel, contains('offline'));
+      expect(
+        controller.catalogLoadEvents.last.message,
+        contains('Sedlan refresh failed'),
+      );
+    },
+  );
+
+  test(
+    'controller records successful Sedlan GET and selects it as source',
+    () async {
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+        initialActiveCatalogSource: StationCatalogSource.bundledAsset,
+      );
+
+      controller.markRemoteStationCatalogLoading();
+      controller.markRemoteStationCatalogResponse(statusCode: 200);
+      controller.markRemoteStationCatalogLoaded(
+        objectCount: 8,
+        stationCount: 6,
+      );
+
+      expect(controller.activeCatalogSource, StationCatalogSource.sedlanGet);
+      expect(controller.catalogLoadEvents, hasLength(3));
+      expect(controller.catalogLoadEvents[1].message, contains('HTTP 200'));
+      expect(controller.catalogLoadEvents.last.stationCount, 6);
     },
   );
 
@@ -450,6 +581,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Offline'), findsOneWidget);
+  });
+
+  test('playback progress clears a stale offline state', () async {
+    final audioEngine = FakeAudioEngine();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: audioEngine,
+      connectivityService: FakeConnectivityService.offline(),
+    );
+
+    expect(controller.isOffline, isTrue);
+
+    audioEngine.emitSnapshot(
+      const PlaybackSnapshot(
+        status: PlaybackStatus.playing,
+        position: Duration(milliseconds: 500),
+      ),
+    );
+
+    expect(controller.isOffline, isFalse);
+
+    controller.dispose();
   });
 
   test(
@@ -834,7 +989,11 @@ class ThrowingStationRepository implements StationRepository {
 }
 
 class InMemorySettingsStore implements SettingsStore {
-  AppSettings _settings = const AppSettings();
+  InMemorySettingsStore([this._settings = const AppSettings()]);
+
+  AppSettings _settings;
+
+  AppSettings get settings => _settings;
 
   @override
   Future<AppSettings> loadSettings() async => _settings;
@@ -886,7 +1045,8 @@ class FakeAudioEngine implements AudioEngine {
 
 class FakeConnectivityService implements ConnectivityService {
   FakeConnectivityService(ConnectivitySnapshot initial)
-    : _snapshot = ValueNotifier<ConnectivitySnapshot>(initial);
+    : _probeIsOnline = initial.isOnline ?? false,
+      _snapshot = ValueNotifier<ConnectivitySnapshot>(initial);
 
   factory FakeConnectivityService.online() {
     return FakeConnectivityService(
@@ -909,6 +1069,7 @@ class FakeConnectivityService implements ConnectivityService {
   }
 
   final ValueNotifier<ConnectivitySnapshot> _snapshot;
+  final bool _probeIsOnline;
 
   @override
   ValueListenable<ConnectivitySnapshot> get snapshot => _snapshot;
@@ -922,5 +1083,23 @@ class FakeConnectivityService implements ConnectivityService {
   Future<void> initialize() async {}
 
   @override
-  Future<void> internetReachable() async {}
+  Future<void> internetReachable() async {
+    _snapshot.value = ConnectivitySnapshot(
+      isOnline: _probeIsOnline,
+      isChecking: false,
+      lastCheckedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  void reportOnline() {
+    if (_snapshot.value.isOnline == true) {
+      return;
+    }
+    _snapshot.value = ConnectivitySnapshot(
+      isOnline: true,
+      isChecking: false,
+      lastCheckedAt: DateTime.now(),
+    );
+  }
 }

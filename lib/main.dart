@@ -48,6 +48,8 @@ Future<void> main() async {
     audioEngine: JustAudioEngine(),
     connectivityService: ReachabilityConnectivityService(),
     startupCountryCode: startupCountryCode,
+    initialCatalogLoadEvents: localStations.loadEvents,
+    initialActiveCatalogSource: localStations.activeSource,
   );
 
   runApp(NoAdsRadioApp(controller: controller));
@@ -67,9 +69,17 @@ Future<void> _refreshStationCatalog({
 }) async {
   controller.markRemoteStationCatalogLoading();
   try {
-    final catalogJson = await remoteStations.fetchCatalogJson();
-    final objectCount = await localStations.replaceWithCatalogJson(catalogJson);
-    controller.markRemoteStationCatalogLoaded(objectCount: objectCount);
+    final response = await remoteStations.fetchCatalog();
+    controller.markRemoteStationCatalogResponse(
+      statusCode: response.statusCode,
+    );
+    final parseResult = await localStations.replaceWithCatalogJson(
+      response.body,
+    );
+    controller.markRemoteStationCatalogLoaded(
+      objectCount: parseResult.objectCount,
+      stationCount: parseResult.stations.length,
+    );
     await controller.refreshDiscover();
   } catch (error) {
     controller.markRemoteStationCatalogFailed(error);

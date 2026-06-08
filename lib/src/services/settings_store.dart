@@ -21,6 +21,7 @@ class AppSettings {
     this.showStationIcon = false,
     this.circleThroughFavorites = true,
     this.countryCodes = const <String>[],
+    this.hasCompletedCountrySetup = true,
     this.manualStations = const <RadioStation>[],
     this.recentlyPlayedStations = const <RadioStation>[],
     this.favoriteCategories = const <FavoriteCategory>[
@@ -32,6 +33,7 @@ class AppSettings {
   final bool showStationIcon;
   final bool circleThroughFavorites;
   final List<String> countryCodes;
+  final bool hasCompletedCountrySetup;
   final List<RadioStation> manualStations;
   final List<RadioStation> recentlyPlayedStations;
   final List<FavoriteCategory> favoriteCategories;
@@ -41,6 +43,7 @@ class AppSettings {
     bool? showStationIcon,
     bool? circleThroughFavorites,
     List<String>? countryCodes,
+    bool? hasCompletedCountrySetup,
     List<RadioStation>? manualStations,
     List<RadioStation>? recentlyPlayedStations,
     List<FavoriteCategory>? favoriteCategories,
@@ -51,6 +54,8 @@ class AppSettings {
       circleThroughFavorites:
           circleThroughFavorites ?? this.circleThroughFavorites,
       countryCodes: countryCodes ?? this.countryCodes,
+      hasCompletedCountrySetup:
+          hasCompletedCountrySetup ?? this.hasCompletedCountrySetup,
       manualStations: manualStations ?? this.manualStations,
       recentlyPlayedStations:
           recentlyPlayedStations ?? this.recentlyPlayedStations,
@@ -71,6 +76,8 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _themePreferenceKey = 'theme_preference';
   static const String _circleThroughFavoritesKey = 'circle_through_favorites';
   static const String _countryCodesKey = 'country_codes';
+  static const String _hasCompletedCountrySetupKey =
+      'has_completed_country_setup';
   static const String _manualStationsKey = 'manual_stations';
   static const String _recentlyPlayedStationsKey = 'recently_played_stations';
   static const String _favoriteCategoriesKey = 'favorite_categories';
@@ -80,6 +87,8 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   @override
   Future<AppSettings> loadSettings() async {
     final favoriteCategories = _loadFavoriteCategories();
+    final countryCodes =
+        _preferences.getStringList(_countryCodesKey) ?? const <String>[];
     return AppSettings(
       themePreference: AppThemePreference.fromStorage(
         _preferences.getString(_themePreferenceKey),
@@ -87,9 +96,9 @@ class SharedPreferencesSettingsStore implements SettingsStore {
       showStationIcon: _preferences.getBool(_showStationIconKey) ?? false,
       circleThroughFavorites:
           _preferences.getBool(_circleThroughFavoritesKey) ?? true,
-      countryCodes: List<String>.unmodifiable(
-        _preferences.getStringList(_countryCodesKey) ?? const <String>[],
-      ),
+      countryCodes: List<String>.unmodifiable(countryCodes),
+      hasCompletedCountrySetup:
+          _preferences.getBool(_hasCompletedCountrySetupKey) ?? false,
       manualStations: List<RadioStation>.unmodifiable(
         (_preferences.getStringList(_manualStationsKey) ?? const <String>[])
             .map(RadioStation.fromStorage),
@@ -115,6 +124,10 @@ class SharedPreferencesSettingsStore implements SettingsStore {
       settings.circleThroughFavorites,
     );
     await _preferences.setStringList(_countryCodesKey, settings.countryCodes);
+    await _preferences.setBool(
+      _hasCompletedCountrySetupKey,
+      settings.hasCompletedCountrySetup,
+    );
     await _preferences.setStringList(
       _manualStationsKey,
       settings.manualStations.map((station) => station.toStorage()).toList(),

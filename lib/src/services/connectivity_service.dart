@@ -22,6 +22,7 @@ abstract class ConnectivityService {
 
   Future<void> initialize();
   Future<void> internetReachable();
+  void reportOnline();
   Future<void> dispose();
 }
 
@@ -80,6 +81,18 @@ class ReachabilityConnectivityService implements ConnectivityService {
     } finally {
       _isChecking = false;
     }
+  }
+
+  @override
+  void reportOnline() {
+    if (_disposed || _snapshot.value.isOnline == true) {
+      return;
+    }
+    _snapshot.value = ConnectivitySnapshot(
+      isOnline: true,
+      isChecking: false,
+      lastCheckedAt: DateTime.now(),
+    );
   }
 
   @override

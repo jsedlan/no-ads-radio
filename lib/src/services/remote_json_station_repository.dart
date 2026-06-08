@@ -4,6 +4,16 @@ import '../models/radio_station.dart';
 import 'catalog_station_repository.dart';
 import 'station_catalog_json.dart';
 
+class RemoteStationCatalogResponse {
+  const RemoteStationCatalogResponse({
+    required this.body,
+    required this.statusCode,
+  });
+
+  final String body;
+  final int statusCode;
+}
+
 class RemoteJsonStationRepository extends CatalogStationRepository {
   RemoteJsonStationRepository({required String catalogUrl, http.Client? client})
     : _client = client ?? http.Client(),
@@ -22,11 +32,11 @@ class RemoteJsonStationRepository extends CatalogStationRepository {
       return _cachedStations!;
     }
 
-    _cachedStations = parseStationCatalogJson(await fetchCatalogJson());
+    _cachedStations = parseStationCatalogJson((await fetchCatalog()).body);
     return _cachedStations!;
   }
 
-  Future<String> fetchCatalogJson() async {
+  Future<RemoteStationCatalogResponse> fetchCatalog() async {
     final response = await _client.get(
       _catalogUri,
       headers: const <String, String>{
@@ -41,6 +51,9 @@ class RemoteJsonStationRepository extends CatalogStationRepository {
       );
     }
 
-    return response.body;
+    return RemoteStationCatalogResponse(
+      body: response.body,
+      statusCode: response.statusCode,
+    );
   }
 }

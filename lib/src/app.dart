@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +9,7 @@ import 'models/favorite_category.dart';
 import 'models/radio_station.dart';
 import 'services/android_settings_launcher.dart';
 import 'services/settings_store.dart';
+import 'services/station_catalog_diagnostics.dart';
 
 part 'app_settings_pages.dart';
 part 'app_station_widgets.dart';
@@ -150,6 +150,9 @@ class _RadioHomePageState extends State<RadioHomePage> {
           return const _Shell(
             child: Center(child: CircularProgressIndicator()),
           );
+        }
+        if (!controller.hasCompletedCountrySetup) {
+          return _CountrySetupPage(controller: controller);
         }
 
         return _Shell(
@@ -470,6 +473,7 @@ class _HeaderState extends State<_Header> {
       controller: _discoverFilterController,
       focusNode: _discoverFilterFocusNode,
       textInputAction: TextInputAction.search,
+      onChanged: controller.setDiscoverFilter,
       onSubmitted: _submitSearch,
       decoration: InputDecoration(
         hintText: 'Filter',
