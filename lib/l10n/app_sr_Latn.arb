@@ -1,0 +1,169 @@
+{
+  "@@locale": "sr_Latn",
+  "appTitle": "NoAds Radio",
+  "language": "Jezik",
+  "languageDescription": "Izaberite jezik aplikacije.",
+  "systemDefault": "Jezik sistema",
+  "english": "Engleski",
+  "serbianLatin": "Srpski (latinica)",
+  "theme": "Tema",
+  "themeDescription": "Izaberite izgled aplikacije.",
+  "dark": "Tamna",
+  "light": "Svetla",
+  "chooseCountryTitle": "Izaberite zemlju radio stanica",
+  "chooseCountryDescription": "Ovaj izbor određuje koje stanice se prikazuju prve. Predlog dolazi iz podešavanja jezika uređaja i možda ne odgovara vašoj fizičkoj lokaciji.",
+  "moreCountriesLater": "Kasnije možete dodati još zemalja u Podešavanjima.",
+  "selectCountry": "Izaberite zemlju",
+  "saving": "Čuvanje...",
+  "continueLabel": "Nastavi",
+  "filter": "Filtriraj",
+  "clearFilter": "Obriši filter",
+  "offline": "Van mreže",
+  "filterStations": "Filtriraj stanice",
+  "more": "Više",
+  "debugView": "Dijagnostika",
+  "settings": "Podešavanja",
+  "noStationsAvailable": "Trenutno nema dostupnih stanica.",
+  "clear": "Obriši",
+  "stationCount": "{count, plural, =0{Nema stanica} one{{count} stanica} few{{count} stanice} other{{count} stanica}}",
+  "@stationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filteredStationCount": "{count, plural, =0{Nema filtriranih stanica} one{{count} filtrirana stanica} few{{count} filtrirane stanice} other{{count} filtriranih stanica}}",
+  "@filteredStationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "categories": "Kategorije",
+  "recentlyPlayed": "Nedavno slušano",
+  "noRecentlyPlayed": "Nema nedavno slušanih stanica.",
+  "stationCountries": "Zemlje radio stanica",
+  "atLeastOneCountry": "Najmanje jedna zemlja mora ostati izabrana.",
+  "diasporaCountryNote": "Stanice iz dijaspore se automatski uključuju kada izaberete bilo koju zemlju bivše Jugoslavije.",
+  "selectedCountries": "Izabrane zemlje",
+  "dragToReorder": "Prevucite za promenu redosleda",
+  "addCountry": "Dodaj zemlju",
+  "done": "Gotovo",
+  "searchCountries": "Pretraži zemlje",
+  "searchCountriesHint": "Srbija ili RS",
+  "noCountriesAvailable": "Nema dostupnih zemalja.",
+  "stations": "Stanice",
+  "noFavoritesInCategory": "Još nema omiljenih stanica u kategoriji {category}. Sačuvajte stanice sa kartice Stanice.",
+  "@noFavoritesInCategory": {
+    "placeholders": {
+      "category": {}
+    }
+  },
+  "nowPlaying": "Slušate",
+  "back": "Nazad",
+  "nothingPlaying": "Ništa se ne reprodukuje.",
+  "previousFavorite": "Prethodna omiljena",
+  "pause": "Pauziraj",
+  "play": "Pusti",
+  "nextFavorite": "Sledeća omiljena",
+  "track": "Pesma",
+  "stream": "Strim",
+  "genre": "Žanr",
+  "location": "Lokacija",
+  "tags": "Oznake",
+  "codec": "Kodek",
+  "bitrate": "Brzina protoka",
+  "sleepTimer": "Tajmer za spavanje",
+  "sleepTimerWithRemaining": "Tajmer za spavanje: {remaining}",
+  "@sleepTimerWithRemaining": {
+    "placeholders": {
+      "remaining": {}
+    }
+  },
+  "off": "Isključeno",
+  "custom": "Prilagođeno",
+  "customSleepTimer": "Prilagođeni tajmer za spavanje",
+  "minutes": "Minuti",
+  "enterPositiveNumber": "Unesite broj veći od 0.",
+  "cancel": "Otkaži",
+  "start": "Pokreni",
+  "internetConnectionLost": "Internet veza je prekinuta",
+  "streamStoppedResponding": "Strim je prestao da odgovara",
+  "playbackStalled": "Reprodukcija je zastala",
+  "playbackFailed": "Reprodukcija nije uspela",
+  "bufferingStream": "Učitavanje strima...",
+  "paused": "Pauzirano",
+  "durationMinutes": "{count, plural, one{{count} minut} few{{count} minuta} other{{count} minuta}}",
+  "@durationMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHours": "{count, plural, one{{count} sat} few{{count} sata} other{{count} sati}}",
+  "@durationHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHoursMinutes": "{hours} č {minutes} min",
+  "@durationHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "lessThanOneMinute": "manje od 1 min",
+  "manualStations": "Ručno dodate stanice",
+  "noManualStations": "Nema ručno dodatih stanica.",
+  "batteryUsage": "Potrošnja baterije",
+  "batteryUsageDescription": "Podesite NoAds Radio na Neograničeno u Android podešavanjima.",
+  "showStationIcon": "Prikaži ikonu stanice",
+  "showStationIconDescription": "Prikaži sliku stanice u listama i traci plejera.",
+  "autoPlayNextFavorite": "Automatski pusti sledeću omiljenu",
+  "autoPlayNextFavoriteDescription": "Kada strim otkaže, pređi na sledeću omiljenu stanicu i nastavi od početka liste.",
+  "autoPlayNextFavoriteDisabledDescription": "Kada strim otkaže, pređi na sledeću omiljenu stanicu i nastavi od početka liste. Dodajte najmanje dve omiljene stanice da biste uključili ovu opciju.",
+  "couldNotOpenAndroidSettings": "Nije moguće otvoriti Android podešavanja aplikacije na ovom uređaju.",
+  "noRecentlyPlayedYet": "Još nema nedavno slušanih stanica.",
+  "categoriesDescription": "Dodajte koliko god kategorija želite. Samo prve 2 će biti vidljive kao kartice pri dnu.",
+  "favorites": "Omiljene",
+  "newCategory": "Nova kategorija",
+  "removeCategory": "Ukloni kategoriju",
+  "addCategory": "Dodaj kategoriju",
+  "add": "Dodaj",
+  "deleteAll": "Obriši sve",
+  "deleteStation": "Obriši stanicu",
+  "deleteAllManualStationsTitle": "Obrisati sve ručno dodate stanice?",
+  "deleteAllManualStationsDescription": "Ovim se uklanjaju sve stanice koje ste ručno dodali.",
+  "addStation": "Dodaj stanicu",
+  "stationName": "Naziv stanice",
+  "stationNameHint": "Moja stanica",
+  "streamUrl": "URL strima",
+  "enterStationName": "Unesite naziv stanice.",
+  "enterValidStreamUrl": "Unesite važeći URL strima.",
+  "activeSource": "Aktivni izvor",
+  "noSourceLoaded": "Nijedan izvor nije učitan",
+  "stationLoadingLog": "Dnevnik učitavanja stanica",
+  "noStationLoadingEvents": "Nema zabeleženih događaja učitavanja stanica.",
+  "playableStationCount": "{count, plural, one{Učitana je {count} stanica} few{Učitane su {count} stanice} other{Učitano je {count} stanica}}",
+  "@playableStationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "diaspora": "Dijaspora",
+  "removeFavorite": "Ukloni iz omiljenih",
+  "saveFavorite": "Sačuvaj u omiljene",
+  "unknown": "Nepoznato"
+}

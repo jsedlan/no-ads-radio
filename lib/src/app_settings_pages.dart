@@ -79,7 +79,7 @@ class _CountrySetupPageState extends State<_CountrySetupPage> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'Choose your station country',
+                        context.l10n.chooseCountryTitle,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
@@ -87,9 +87,7 @@ class _CountrySetupPageState extends State<_CountrySetupPage> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'We use this to choose which stations appear first. '
-                        'The suggestion comes from your device locale and may '
-                        'not match your physical location.',
+                        context.l10n.chooseCountryDescription,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: _mutedTextColor(context),
@@ -97,7 +95,7 @@ class _CountrySetupPageState extends State<_CountrySetupPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'You can add more countries later in Settings.',
+                        context.l10n.moreCountriesLater,
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: _mutedTextColor(context),
@@ -114,7 +112,7 @@ class _CountrySetupPageState extends State<_CountrySetupPage> {
                           ),
                         ),
                         title: Text(
-                          selectedOption?.name ?? 'Select a country',
+                          selectedOption?.name ?? context.l10n.selectCountry,
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         subtitle: selectedOption == null
@@ -127,7 +125,11 @@ class _CountrySetupPageState extends State<_CountrySetupPage> {
                         onPressed: _selectedCountryCode.isEmpty || _isSaving
                             ? null
                             : _continue,
-                        child: Text(_isSaving ? 'Saving...' : 'Continue'),
+                        child: Text(
+                          _isSaving
+                              ? context.l10n.saving
+                              : context.l10n.continueLabel,
+                        ),
                       ),
                     ],
                   ),
@@ -198,9 +200,11 @@ class _SettingsViewState extends State<_SettingsView>
         final theme = Theme.of(context);
         final canCircleThroughFavorites = controller.canCircleThroughFavorites;
         final selectedCountriesSummary = _selectedCountriesSummary(
+          context,
           controller.countryCodes,
         );
         final categoriesSummary = _favoriteCategoriesSummary(
+          context,
           controller.favoriteCategories,
         );
 
@@ -216,30 +220,80 @@ class _SettingsViewState extends State<_SettingsView>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Theme',
+                      context.l10n.language,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Choose how the app should look.',
+                      context.l10n.languageDescription,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: _mutedTextColor(context),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<AppLanguagePreference>(
+                      initialValue: controller.languagePreference,
+                      decoration: const InputDecoration(),
+                      items: [
+                        DropdownMenuItem<AppLanguagePreference>(
+                          value: AppLanguagePreference.system,
+                          child: Text(context.l10n.systemDefault),
+                        ),
+                        DropdownMenuItem<AppLanguagePreference>(
+                          value: AppLanguagePreference.english,
+                          child: Text(context.l10n.english),
+                        ),
+                        DropdownMenuItem<AppLanguagePreference>(
+                          value: AppLanguagePreference.serbianLatin,
+                          child: Text(context.l10n.serbianLatin),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          controller.setLanguagePreference(value);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.theme,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      context.l10n.themeDescription,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: _mutedTextColor(context),
                       ),
                     ),
                     const SizedBox(height: 12),
                     SegmentedButton<AppThemePreference>(
-                      segments: const <ButtonSegment<AppThemePreference>>[
+                      segments: <ButtonSegment<AppThemePreference>>[
                         ButtonSegment<AppThemePreference>(
                           value: AppThemePreference.dark,
-                          icon: Icon(Icons.dark_mode_rounded),
-                          label: Text('Dark'),
+                          icon: const Icon(Icons.dark_mode_rounded),
+                          label: Text(context.l10n.dark),
                         ),
                         ButtonSegment<AppThemePreference>(
                           value: AppThemePreference.light,
-                          icon: Icon(Icons.light_mode_rounded),
-                          label: Text('Light'),
+                          icon: const Icon(Icons.light_mode_rounded),
+                          label: Text(context.l10n.light),
                         ),
                       ],
                       selected: <AppThemePreference>{
@@ -264,7 +318,7 @@ class _SettingsViewState extends State<_SettingsView>
                   );
                 },
                 title: Text(
-                  'Categories',
+                  context.l10n.categories,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -293,15 +347,17 @@ class _SettingsViewState extends State<_SettingsView>
                   );
                 },
                 title: Text(
-                  'Recently played',
+                  context.l10n.recentlyPlayed,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 subtitle: Text(
                   controller.recentlyPlayedStations.isEmpty
-                      ? 'No recently played stations.'
-                      : '${controller.recentlyPlayedStations.length} stations',
+                      ? context.l10n.noRecentlyPlayed
+                      : context.l10n.stationCount(
+                          controller.recentlyPlayedStations.length,
+                        ),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: _mutedTextColor(context),
                   ),
@@ -324,7 +380,7 @@ class _SettingsViewState extends State<_SettingsView>
                   );
                 },
                 title: Text(
-                  'Station countries',
+                  context.l10n.stationCountries,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -353,15 +409,17 @@ class _SettingsViewState extends State<_SettingsView>
                   );
                 },
                 title: Text(
-                  'Manual stations',
+                  context.l10n.manualStations,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 subtitle: Text(
                   controller.manualStations.isEmpty
-                      ? 'No manually added stations.'
-                      : '${controller.manualStations.length} stations',
+                      ? context.l10n.noManualStations
+                      : context.l10n.stationCount(
+                          controller.manualStations.length,
+                        ),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: _mutedTextColor(context),
                   ),
@@ -377,13 +435,13 @@ class _SettingsViewState extends State<_SettingsView>
               child: ListTile(
                 onTap: () => _openBatterySettings(context),
                 title: Text(
-                  'Battery usage',
+                  context.l10n.batteryUsage,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 subtitle: Text(
-                  'Set NoAds Radio to Unrestricted in Android settings.',
+                  context.l10n.batteryUsageDescription,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: _mutedTextColor(context),
                   ),
@@ -407,13 +465,13 @@ class _SettingsViewState extends State<_SettingsView>
                   controller.setShowStationIcon(value ?? false);
                 },
                 title: Text(
-                  'Show station icon',
+                  context.l10n.showStationIcon,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 subtitle: Text(
-                  'Display station artwork in lists and the player bar.',
+                  context.l10n.showStationIconDescription,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: _mutedTextColor(context),
                   ),
@@ -434,7 +492,7 @@ class _SettingsViewState extends State<_SettingsView>
                       }
                     : null,
                 title: Text(
-                  'Auto-play next favorite',
+                  context.l10n.autoPlayNextFavorite,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: canCircleThroughFavorites
@@ -444,8 +502,8 @@ class _SettingsViewState extends State<_SettingsView>
                 ),
                 subtitle: Text(
                   canCircleThroughFavorites
-                      ? 'When a stream fails, move to the next favorite and wrap to the start.'
-                      : 'When a stream fails, move to the next favorite and wrap to the start. Add at least two favorites to enable this option.',
+                      ? context.l10n.autoPlayNextFavoriteDescription
+                      : context.l10n.autoPlayNextFavoriteDisabledDescription,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: canCircleThroughFavorites
                         ? _mutedTextColor(context)
@@ -472,9 +530,7 @@ class _SettingsViewState extends State<_SettingsView>
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Could not open Android app settings on this device.'),
-      ),
+      SnackBar(content: Text(context.l10n.couldNotOpenAndroidSettings)),
     );
   }
 }
@@ -505,7 +561,7 @@ class _RecentlyPlayedPage extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Recently played',
+                          context.l10n.recentlyPlayed,
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -519,7 +575,7 @@ class _RecentlyPlayedPage extends StatelessWidget {
                             color: theme.colorScheme.error,
                           ),
                           label: Text(
-                            'Clear',
+                            context.l10n.clear,
                             style: TextStyle(color: theme.colorScheme.error),
                           ),
                         ),
@@ -532,7 +588,7 @@ class _RecentlyPlayedPage extends StatelessWidget {
                     child: _StationList(
                       controller: controller,
                       stations: controller.recentlyPlayedStations,
-                      emptyMessage: 'No recently played stations yet.',
+                      emptyMessage: context.l10n.noRecentlyPlayedYet,
                     ),
                   ),
                 ),
@@ -558,6 +614,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
   late final List<FavoriteCategory> _categories;
+  bool _didLocalizeDefaultCategory = false;
 
   @override
   void initState() {
@@ -589,6 +646,20 @@ class _CategoriesPageState extends State<_CategoriesPage> {
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didLocalizeDefaultCategory) {
+      return;
+    }
+    _didLocalizeDefaultCategory = true;
+    for (var index = 0; index < _categories.length; index += 1) {
+      if (_categories[index].name.trim() == 'Favorites') {
+        _controllers[index].text = context.l10n.favorites;
+      }
+    }
+  }
+
   void _addCategory() {
     setState(() {
       _categories.add(
@@ -616,11 +687,18 @@ class _CategoriesPageState extends State<_CategoriesPage> {
   }
 
   Future<void> _saveAndClose() async {
-    final values = List<FavoriteCategory>.generate(
-      _controllers.length,
-      (index) => _categories[index].copyWith(name: _controllers[index].text),
-      growable: false,
-    );
+    final values = List<FavoriteCategory>.generate(_controllers.length, (
+      index,
+    ) {
+      final originalName = _categories[index].name.trim();
+      final editedName = _controllers[index].text.trim();
+      return _categories[index].copyWith(
+        name:
+            originalName == 'Favorites' && editedName == context.l10n.favorites
+            ? 'Favorites'
+            : editedName,
+      );
+    }, growable: false);
     await widget.controller.setFavoriteCategoryItems(values);
     if (mounted) {
       Navigator.of(context).pop();
@@ -646,7 +724,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Categories',
+                      context.l10n.categories,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -654,7 +732,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                   ),
                   FilledButton(
                     onPressed: _saveAndClose,
-                    child: const Text('Done'),
+                    child: Text(context.l10n.done),
                   ),
                 ],
               ),
@@ -671,7 +749,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Add as many categories as you like. Only the first 2 will be visible as tabs on the bottom.',
+                              context.l10n.categoriesDescription,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: _mutedTextColor(context),
                                 height: 1.5,
@@ -696,14 +774,14 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                                       : TextInputAction.next,
                                   decoration: InputDecoration(
                                     hintText: index == 0
-                                        ? 'Favorites'
-                                        : 'New category',
+                                        ? context.l10n.favorites
+                                        : context.l10n.newCategory,
                                     suffixIcon: IconButton(
                                       onPressed: () => _removeCategory(index),
                                       icon: const Icon(
                                         Icons.delete_outline_rounded,
                                       ),
-                                      tooltip: 'Remove category',
+                                      tooltip: context.l10n.removeCategory,
                                     ),
                                   ),
                                 ),
@@ -713,7 +791,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                             OutlinedButton.icon(
                               onPressed: _addCategory,
                               icon: const Icon(Icons.add_rounded),
-                              label: const Text('Add category'),
+                              label: Text(context.l10n.addCategory),
                             ),
                           ],
                         ),
@@ -756,7 +834,7 @@ class _ManualStationsPage extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Manual stations',
+                          context.l10n.manualStations,
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -772,7 +850,7 @@ class _ManualStationsPage extends StatelessWidget {
                           );
                         },
                         icon: const Icon(Icons.add_rounded),
-                        label: const Text('Add'),
+                        label: Text(context.l10n.add),
                       ),
                     ],
                   ),
@@ -800,7 +878,7 @@ class _ManualStationsPage extends StatelessWidget {
                                 color: theme.colorScheme.error,
                               ),
                               label: Text(
-                                'Delete all',
+                                context.l10n.deleteAll,
                                 style: TextStyle(
                                   color: theme.colorScheme.error,
                                 ),
@@ -811,7 +889,7 @@ class _ManualStationsPage extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Text(
-                              'No manually added stations.',
+                              context.l10n.noManualStations,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: _mutedTextColor(context),
                                 height: 1.5,
@@ -840,7 +918,7 @@ class _ManualStationsPage extends StatelessWidget {
                                       Icons.delete_outline_rounded,
                                       color: theme.colorScheme.error,
                                     ),
-                                    tooltip: 'Delete station',
+                                    tooltip: context.l10n.deleteStation,
                                   ),
                                 ),
                               ),
@@ -863,16 +941,16 @@ class _ManualStationsPage extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Delete all manual stations?'),
-          content: const Text('This removes all stations you added manually.'),
+          title: Text(context.l10n.deleteAllManualStationsTitle),
+          content: Text(context.l10n.deleteAllManualStationsDescription),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete all'),
+              child: Text(context.l10n.deleteAll),
             ),
           ],
         );
@@ -947,7 +1025,7 @@ class _AddManualStationPageState extends State<_AddManualStationPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Add station',
+                      context.l10n.addStation,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -955,7 +1033,7 @@ class _AddManualStationPageState extends State<_AddManualStationPage> {
                   ),
                   FilledButton(
                     onPressed: _isSaving ? null : _save,
-                    child: const Text('Done'),
+                    child: Text(context.l10n.done),
                   ),
                 ],
               ),
@@ -975,13 +1053,13 @@ class _AddManualStationPageState extends State<_AddManualStationPage> {
                               TextFormField(
                                 controller: _nameController,
                                 textInputAction: TextInputAction.next,
-                                decoration: const InputDecoration(
-                                  labelText: 'Station name',
-                                  hintText: 'My station',
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.stationName,
+                                  hintText: context.l10n.stationNameHint,
                                 ),
                                 validator: (value) {
                                   if ((value ?? '').trim().isEmpty) {
-                                    return 'Enter a station name.';
+                                    return context.l10n.enterStationName;
                                   }
                                   return null;
                                 },
@@ -992,8 +1070,8 @@ class _AddManualStationPageState extends State<_AddManualStationPage> {
                                 keyboardType: TextInputType.url,
                                 textInputAction: TextInputAction.done,
                                 onFieldSubmitted: (_) => _save(),
-                                decoration: const InputDecoration(
-                                  labelText: 'Stream URL',
+                                decoration: InputDecoration(
+                                  labelText: context.l10n.streamUrl,
                                   hintText: 'https://example.com/stream',
                                 ),
                                 validator: (value) {
@@ -1003,7 +1081,7 @@ class _AddManualStationPageState extends State<_AddManualStationPage> {
                                   if (uri == null ||
                                       uri.scheme.trim().isEmpty ||
                                       uri.host.trim().isEmpty) {
-                                    return 'Enter a valid stream URL.';
+                                    return context.l10n.enterValidStreamUrl;
                                   }
                                   return null;
                                 },
@@ -1091,7 +1169,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Station countries',
+                      context.l10n.stationCountries,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -1099,7 +1177,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                   ),
                   FilledButton(
                     onPressed: _saveAndClose,
-                    child: const Text('Done'),
+                    child: Text(context.l10n.done),
                   ),
                 ],
               ),
@@ -1112,7 +1190,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'At least one country must remain selected.',
+                        context.l10n.atLeastOneCountry,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: _mutedTextColor(context),
                         ),
@@ -1122,8 +1200,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Diaspora stations are automatically included when '
-                        'you select any former Yugoslav country.',
+                        context.l10n.diasporaCountryNote,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: _mutedTextColor(context),
                         ),
@@ -1137,14 +1214,14 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Selected countries',
+                              context.l10n.selectedCountries,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Drag to reorder',
+                              context.l10n.dragToReorder,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: _mutedTextColor(context),
                               ),
@@ -1155,7 +1232,7 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                               child: OutlinedButton.icon(
                                 onPressed: _openAddCountryPage,
                                 icon: const Icon(Icons.add_rounded),
-                                label: const Text('Add country'),
+                                label: Text(context.l10n.addCountry),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -1303,7 +1380,7 @@ class _AddCountryPageState extends State<_AddCountryPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Add country',
+                      context.l10n.addCountry,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -1319,10 +1396,10 @@ class _AddCountryPageState extends State<_AddCountryPage> {
                   children: [
                     TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search countries',
-                        hintText: 'Serbia or RS',
-                        prefixIcon: Icon(Icons.search),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.searchCountries,
+                        hintText: context.l10n.searchCountriesHint,
+                        prefixIcon: const Icon(Icons.search),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1331,7 +1408,7 @@ class _AddCountryPageState extends State<_AddCountryPage> {
                         child: availableOptions.isEmpty
                             ? Center(
                                 child: Text(
-                                  'No countries available.',
+                                  context.l10n.noCountriesAvailable,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: _mutedTextColor(context),
                                   ),
@@ -1384,7 +1461,7 @@ class _SettingsPage extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Settings',
+                    context.l10n.settings,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),

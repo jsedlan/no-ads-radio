@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:no_ads_radio/l10n/app_localizations.dart';
 
 import 'audio/audio_engine.dart';
 import 'controllers/radio_app_controller.dart';
@@ -25,8 +26,11 @@ class NoAdsRadioApp extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return MaterialApp(
-          title: 'NoAds Radio',
+          onGenerateTitle: (context) => context.l10n.appTitle,
           debugShowCheckedModeBanner: false,
+          locale: _appLocale(controller.languagePreference),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           themeMode: _themeMode(controller.themePreference),
           theme: _buildAppTheme(Brightness.light),
           darkTheme: _buildAppTheme(Brightness.dark),
@@ -35,6 +39,21 @@ class NoAdsRadioApp extends StatelessWidget {
       },
     );
   }
+}
+
+Locale? _appLocale(AppLanguagePreference preference) {
+  return switch (preference) {
+    AppLanguagePreference.system => null,
+    AppLanguagePreference.english => const Locale('en'),
+    AppLanguagePreference.serbianLatin => const Locale.fromSubtags(
+      languageCode: 'sr',
+      scriptCode: 'Latn',
+    ),
+  };
+}
+
+extension AppLocalizationsContext on BuildContext {
+  AppLocalizations get l10n => AppLocalizations.of(this)!;
 }
 
 ThemeMode _themeMode(AppThemePreference preference) {
@@ -270,7 +289,7 @@ class _TopTabBar extends StatelessWidget {
           child: _CompactTopTab(
             icon: Icons.explore_outlined,
             selectedIcon: Icons.explore,
-            label: 'Stations',
+            label: context.l10n.stations,
             selected: selectedIndex == 0,
             onTap: () => controller.selectTab(0),
           ),
@@ -281,7 +300,7 @@ class _TopTabBar extends StatelessWidget {
           final tab = _CompactTopTab(
             icon: Icons.favorite_border,
             selectedIcon: Icons.favorite,
-            label: category.name,
+            label: _localizedCategoryName(context, category.name),
             selected: selectedIndex == tabIndex,
             highlighted:
                 isDraggingDiscoverStation && favoriteDropTargetIndex == index,
@@ -476,12 +495,12 @@ class _HeaderState extends State<_Header> {
       onChanged: controller.setDiscoverFilter,
       onSubmitted: _submitSearch,
       decoration: InputDecoration(
-        hintText: 'Filter',
+        hintText: context.l10n.filter,
         prefixIcon: const Icon(Icons.search),
         suffixIcon: IconButton(
           onPressed: _clearSearch,
           icon: const Icon(Icons.close_rounded),
-          tooltip: 'Clear filter',
+          tooltip: context.l10n.clearFilter,
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 10),
       ),
@@ -526,7 +545,7 @@ class _HeaderState extends State<_Header> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Offline',
+                          context.l10n.offline,
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: theme.colorScheme.error,
                             fontWeight: FontWeight.w700,
@@ -562,10 +581,10 @@ class _HeaderState extends State<_Header> {
                       IconButton(
                         onPressed: _expandSearch,
                         icon: const Icon(Icons.search_rounded),
-                        tooltip: 'Filter stations',
+                        tooltip: context.l10n.filterStations,
                       ),
                       PopupMenuButton<_HeaderAction>(
-                        tooltip: 'More',
+                        tooltip: context.l10n.more,
                         icon: const Icon(Icons.more_vert_rounded),
                         color: theme.cardTheme.color,
                         onSelected: (value) {
@@ -586,14 +605,14 @@ class _HeaderState extends State<_Header> {
                               );
                           }
                         },
-                        itemBuilder: (context) => const [
+                        itemBuilder: (context) => [
                           PopupMenuItem<_HeaderAction>(
                             value: _HeaderAction.debugView,
-                            child: Text('Debug view'),
+                            child: Text(context.l10n.debugView),
                           ),
                           PopupMenuItem<_HeaderAction>(
                             value: _HeaderAction.settings,
-                            child: Text('Settings'),
+                            child: Text(context.l10n.settings),
                           ),
                         ],
                       ),
@@ -652,7 +671,7 @@ class _DiscoverTab extends StatelessWidget {
           controller: controller,
           stations: stations,
           isLoading: controller.isRefreshingDiscover,
-          emptyMessage: 'No stations available right now.',
+          emptyMessage: context.l10n.noStationsAvailable,
           draggableStations: true,
           onDragStateChanged: onDragStateChanged,
         ),
@@ -670,13 +689,13 @@ class _FavoritesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stations = controller.favoritesForCategory(category.id);
+    final categoryName = _localizedCategoryName(context, category.name);
     return _StationTabContent(
       stationCount: stations.length,
       child: _StationList(
         controller: controller,
         stations: stations,
-        emptyMessage:
-            'No favorites in ${category.name} yet. Save stations from Stations to build this category.',
+        emptyMessage: context.l10n.noFavoritesInCategory(categoryName),
         onReorder: (oldIndex, newIndex) {
           controller.reorderFavorites(
             categoryId: category.id,
@@ -706,7 +725,9 @@ class _StationTabContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final countLabel = Text(
-      _stationCountLabel(stationCount, isFiltered: isFiltered),
+      isFiltered
+          ? context.l10n.filteredStationCount(stationCount)
+          : context.l10n.stationCount(stationCount),
       style: theme.textTheme.labelSmall?.copyWith(
         color: _mutedTextColor(context),
         fontWeight: FontWeight.w600,
@@ -725,7 +746,7 @@ class _StationTabContent extends StatelessWidget {
                     children: [
                       Expanded(child: countLabel),
                       Tooltip(
-                        message: 'Clear filter',
+                        message: context.l10n.clearFilter,
                         child: InkWell(
                           onTap: onClearFilter,
                           borderRadius: BorderRadius.circular(4),
@@ -738,7 +759,7 @@ class _StationTabContent extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'Clear',
+                                  context.l10n.clear,
                                   style: theme.textTheme.labelSmall?.copyWith(
                                     color: theme.colorScheme.primary,
                                     fontWeight: FontWeight.w700,
@@ -763,12 +784,6 @@ class _StationTabContent extends StatelessWidget {
       ),
     );
   }
-}
-
-String _stationCountLabel(int stationCount, {bool isFiltered = false}) {
-  final stationLabel = stationCount == 1 ? 'station' : 'stations';
-  final filterLabel = isFiltered ? ' filtered' : '';
-  return '$stationCount$filterLabel $stationLabel';
 }
 
 class _PlayerBar extends StatelessWidget {
@@ -892,15 +907,15 @@ class _NowPlayingScreen extends StatelessWidget {
               appBar: AppBar(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
-                title: const Text('Now playing'),
+                title: Text(context.l10n.nowPlaying),
                 leading: IconButton(
-                  tooltip: 'Back',
+                  tooltip: context.l10n.back,
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
               ),
               body: station == null
-                  ? const Center(child: Text('Nothing is playing.'))
+                  ? Center(child: Text(context.l10n.nothingPlaying))
                   : _NowPlayingBody(
                       controller: controller,
                       station: station,
@@ -933,6 +948,7 @@ class _NowPlayingBody extends StatelessWidget {
       playbackStalled: controller.playbackStalled,
       playbackStallReason: controller.playbackStallReason,
       stationName: station.displayName,
+      l10n: context.l10n,
     );
     final title = _cleanNowPlayingMetadata(
       playback.nowPlaying?.displayTitle,
@@ -979,7 +995,7 @@ class _NowPlayingBody extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _LargePlaybackButton(
-              tooltip: 'Previous favorite',
+              tooltip: context.l10n.previousFavorite,
               icon: Icons.skip_previous_rounded,
               onPressed: controller.canPlayAdjacentFavorite
                   ? controller.playPreviousFavorite
@@ -987,7 +1003,9 @@ class _NowPlayingBody extends StatelessWidget {
             ),
             const SizedBox(width: 18),
             _LargePlaybackButton(
-              tooltip: playback.isPlaying ? 'Pause' : 'Play',
+              tooltip: playback.isPlaying
+                  ? context.l10n.pause
+                  : context.l10n.play,
               icon: playback.isPlaying
                   ? Icons.pause_rounded
                   : Icons.play_arrow_rounded,
@@ -1000,7 +1018,7 @@ class _NowPlayingBody extends StatelessWidget {
             ),
             const SizedBox(width: 18),
             _LargePlaybackButton(
-              tooltip: 'Next favorite',
+              tooltip: context.l10n.nextFavorite,
               icon: Icons.skip_next_rounded,
               onPressed: controller.canPlayAdjacentFavorite
                   ? controller.playNextFavorite
@@ -1011,34 +1029,46 @@ class _NowPlayingBody extends StatelessWidget {
         const SizedBox(height: 28),
         _NowPlayingInfoCard(
           children: [
-            if (title != null) _NowPlayingInfoRow(label: 'Track', value: title),
+            if (title != null)
+              _NowPlayingInfoRow(label: context.l10n.track, value: title),
             if (streamStation != null)
-              _NowPlayingInfoRow(label: 'Stream', value: streamStation),
-            if (genre != null) _NowPlayingInfoRow(label: 'Genre', value: genre),
+              _NowPlayingInfoRow(
+                label: context.l10n.stream,
+                value: streamStation,
+              ),
+            if (genre != null)
+              _NowPlayingInfoRow(label: context.l10n.genre, value: genre),
             if (station.displayLocation.isNotEmpty)
               _NowPlayingInfoRow(
-                label: 'Location',
+                label: context.l10n.location,
                 value: station.displayLocation,
               ),
             if (station.displayLanguage.isNotEmpty)
               _NowPlayingInfoRow(
-                label: 'Language',
+                label: context.l10n.language,
                 value: station.displayLanguage,
               ),
             if (station.displayTags.isNotEmpty)
-              _NowPlayingInfoRow(label: 'Tags', value: station.displayTags),
+              _NowPlayingInfoRow(
+                label: context.l10n.tags,
+                value: station.displayTags,
+              ),
             if (station.codec.trim().isNotEmpty)
-              _NowPlayingInfoRow(label: 'Codec', value: station.codec.trim()),
+              _NowPlayingInfoRow(
+                label: context.l10n.codec,
+                value: station.codec.trim(),
+              ),
             if (station.bitrate > 0)
               _NowPlayingInfoRow(
-                label: 'Bitrate',
+                label: context.l10n.bitrate,
                 value: '${station.bitrate} kbps',
               ),
             if (controller.sleepTimerRemaining > Duration.zero)
               _NowPlayingInfoRow(
-                label: 'Sleep timer',
+                label: context.l10n.sleepTimer,
                 value: _formatSleepTimerRemaining(
                   controller.sleepTimerRemaining,
+                  context.l10n,
                 ),
               ),
           ],
@@ -1160,8 +1190,10 @@ class _SleepTimerButton extends StatelessWidget {
     final active = controller.isSleepTimerActive;
     return PopupMenuButton<int>(
       tooltip: active
-          ? 'Sleep timer: ${_formatSleepTimerRemaining(remaining)}'
-          : 'Sleep timer',
+          ? context.l10n.sleepTimerWithRemaining(
+              _formatSleepTimerRemaining(remaining, context.l10n),
+            )
+          : context.l10n.sleepTimer,
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       padding: EdgeInsets.zero,
       enabled: enabled,
@@ -1199,18 +1231,22 @@ class _SleepTimerButton extends StatelessWidget {
             }
           : null,
       itemBuilder: (context) => <PopupMenuEntry<int>>[
-        PopupMenuItem<int>(value: 0, enabled: active, child: const Text('Off')),
+        PopupMenuItem<int>(
+          value: 0,
+          enabled: active,
+          child: Text(context.l10n.off),
+        ),
         const PopupMenuDivider(),
         ...RadioAppController.sleepTimerOptions.map(
           (duration) => PopupMenuItem<int>(
             value: duration.inMinutes,
-            child: Text(_formatSleepTimerOption(duration)),
+            child: Text(_formatSleepTimerOption(duration, context.l10n)),
           ),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem<int>(
+        PopupMenuItem<int>(
           value: _customSleepTimerValue,
-          child: Text('Custom'),
+          child: Text(context.l10n.custom),
         ),
       ],
     );
@@ -1257,7 +1293,7 @@ class _CustomSleepTimerDialogState extends State<_CustomSleepTimerDialog> {
     final value = int.tryParse(_textController.text.trim());
     if (value == null || value <= 0) {
       setState(() {
-        _errorText = 'Enter a number greater than 0.';
+        _errorText = context.l10n.enterPositiveNumber;
       });
       return;
     }
@@ -1267,14 +1303,14 @@ class _CustomSleepTimerDialogState extends State<_CustomSleepTimerDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Custom sleep timer'),
+      title: Text(context.l10n.customSleepTimer),
       content: TextField(
         controller: _textController,
         autofocus: true,
         keyboardType: TextInputType.number,
         textInputAction: TextInputAction.done,
         decoration: InputDecoration(
-          labelText: 'Minutes',
+          labelText: context.l10n.minutes,
           hintText: '90',
           errorText: _errorText,
         ),
@@ -1283,9 +1319,9 @@ class _CustomSleepTimerDialogState extends State<_CustomSleepTimerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Start')),
+        FilledButton(onPressed: _submit, child: Text(context.l10n.start)),
       ],
     );
   }
@@ -1321,6 +1357,7 @@ class _PlayerBarText extends StatelessWidget {
       playbackStalled: playbackStalled,
       playbackStallReason: playbackStallReason,
       stationName: station.displayName,
+      l10n: context.l10n,
     );
     final metadata = playback.isPlaying
         ? _cleanNowPlayingMetadata(
@@ -1333,7 +1370,9 @@ class _PlayerBarText extends StatelessWidget {
       ?status,
       if (metadata != null && metadata.isNotEmpty) metadata,
       if (sleepTimerRemaining > Duration.zero)
-        'Sleep timer: ${_formatSleepTimerRemaining(sleepTimerRemaining)}',
+        context.l10n.sleepTimerWithRemaining(
+          _formatSleepTimerRemaining(sleepTimerRemaining, context.l10n),
+        ),
     ];
     final message = parts.join('  •  ');
 
@@ -1353,19 +1392,20 @@ String? _playerBarStatus({
   required bool playbackStalled,
   required PlaybackStallReason? playbackStallReason,
   required String stationName,
+  required AppLocalizations l10n,
 }) {
   if (playbackStalled) {
     return playbackStallReason == PlaybackStallReason.internetOutage
-        ? 'Internet connection lost'
+        ? l10n.internetConnectionLost
         : playbackStallReason == PlaybackStallReason.streamFailure
-        ? 'Stream stopped responding'
-        : 'Playback stalled';
+        ? l10n.streamStoppedResponding
+        : l10n.playbackStalled;
   }
   if (playback.hasError) {
-    return playback.message ?? 'Playback failed';
+    return playback.message ?? l10n.playbackFailed;
   }
   if (playback.isLoading) {
-    return 'Buffering stream...';
+    return l10n.bufferingStream;
   }
   if (playback.isPlaying) {
     return _cleanNowPlayingMetadata(
@@ -1373,7 +1413,7 @@ String? _playerBarStatus({
       stationName: stationName,
     );
   }
-  return 'Paused';
+  return l10n.paused;
 }
 
 String? _cleanNowPlayingMetadata(String? value, {required String stationName}) {
@@ -1566,23 +1606,29 @@ class _ChyronTextState extends State<_ChyronText> {
   }
 }
 
-String _formatSleepTimerOption(Duration duration) {
+String _formatSleepTimerOption(
+  Duration duration,
+  AppLocalizations localizations,
+) {
   final minutes = duration.inMinutes;
   if (minutes < 60) {
-    return '$minutes minutes';
+    return localizations.durationMinutes(minutes);
   }
   final hours = duration.inHours;
   final remainingMinutes = minutes.remainder(60);
   if (remainingMinutes == 0) {
-    return hours == 1 ? '1 hour' : '$hours hours';
+    return localizations.durationHours(hours);
   }
-  return '$hours h $remainingMinutes min';
+  return localizations.durationHoursMinutes(hours, remainingMinutes);
 }
 
-String _formatSleepTimerRemaining(Duration duration) {
+String _formatSleepTimerRemaining(
+  Duration duration,
+  AppLocalizations localizations,
+) {
   final totalSeconds = duration.inSeconds;
   if (totalSeconds <= 0) {
-    return 'less than 1 min';
+    return localizations.lessThanOneMinute;
   }
   final minutes = (totalSeconds / 60).ceil();
   if (minutes < 60) {

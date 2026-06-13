@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:no_ads_radio/l10n/app_localizations.dart';
 
 import 'package:no_ads_radio/src/app.dart';
 import 'package:no_ads_radio/src/audio/audio_engine.dart';
 import 'package:no_ads_radio/src/controllers/radio_app_controller.dart';
+import 'package:no_ads_radio/src/models/favorite_category.dart';
 import 'package:no_ads_radio/src/models/radio_station.dart';
 import 'package:no_ads_radio/src/models/search_query.dart';
 import 'package:no_ads_radio/src/services/connectivity_service.dart';
@@ -17,6 +19,19 @@ import 'package:no_ads_radio/src/services/station_catalog_diagnostics.dart';
 import 'package:no_ads_radio/src/services/station_repository.dart';
 
 void main() {
+  test('Serbian station counts use one, few, and other plural forms', () async {
+    final localizations = await AppLocalizations.delegate.load(
+      const Locale.fromSubtags(languageCode: 'sr', scriptCode: 'Latn'),
+    );
+
+    expect(localizations.stationCount(0), 'Nema stanica');
+    expect(localizations.stationCount(1), '1 stanica');
+    expect(localizations.stationCount(2), '2 stanice');
+    expect(localizations.stationCount(5), '5 stanica');
+    expect(localizations.stationCount(21), '21 stanica');
+    expect(localizations.filteredStationCount(22), '22 filtrirane stanice');
+  });
+
   testWidgets('first run confirms locale country before saving it', (
     tester,
   ) async {
@@ -98,6 +113,100 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Show station icon'), findsOneWidget);
+  });
+
+  testWidgets('language preference switches the app to Serbian Latin', (
+    tester,
+  ) async {
+    final settingsStore = InMemorySettingsStore();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('System default'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Serbian (Latin)').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Jezik'), findsOneWidget);
+    expect(find.text('Tema'), findsOneWidget);
+    expect(controller.languagePreference, AppLanguagePreference.serbianLatin);
+    expect(
+      settingsStore.settings.languagePreference,
+      AppLanguagePreference.serbianLatin,
+    );
+
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    await controller.playStation(controller.discoverStations.first);
+    await tester.pumpAndSettle();
+    final screenSize = tester.view.physicalSize / tester.view.devicePixelRatio;
+    await tester.tapAt(Offset(screenSize.width / 2, screenSize.height - 28));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Slušate'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('only the canonical Favorites category is localized', (
+    tester,
+  ) async {
+    final settingsStore = InMemorySettingsStore(
+      const AppSettings(
+        languagePreference: AppLanguagePreference.serbianLatin,
+        favoriteCategories: <FavoriteCategory>[
+          FavoriteCategory(id: 'favorites', name: 'Favorites'),
+          FavoriteCategory(id: 'rock', name: 'Rock'),
+        ],
+      ),
+    );
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Omiljene'), findsOneWidget);
+    expect(find.text('Rock'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Podešavanja').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kategorije'));
+    await tester.pumpAndSettle();
+
+    final categoryFields = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((field) => field.controller?.text)
+        .toList(growable: false);
+    expect(categoryFields, containsAll(<String?>['Omiljene', 'Rock']));
+
+    await tester.tap(find.text('Gotovo'));
+    await tester.pumpAndSettle();
+
+    expect(controller.favoriteCategories[0].name, 'Favorites');
+    expect(controller.favoriteCategories[1].name, 'Rock');
+
+    controller.dispose();
   });
 
   testWidgets('bottom player opens now playing only while active', (
@@ -455,7 +564,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Station countries'));
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Station countries'));
     await tester.pumpAndSettle();
 

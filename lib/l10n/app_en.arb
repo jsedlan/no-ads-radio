@@ -1,0 +1,169 @@
+{
+  "@@locale": "en",
+  "appTitle": "NoAds Radio",
+  "language": "Language",
+  "languageDescription": "Choose the language used by the app.",
+  "systemDefault": "System default",
+  "english": "English",
+  "serbianLatin": "Serbian (Latin)",
+  "theme": "Theme",
+  "themeDescription": "Choose how the app should look.",
+  "dark": "Dark",
+  "light": "Light",
+  "chooseCountryTitle": "Choose your station country",
+  "chooseCountryDescription": "We use this to choose which stations appear first. The suggestion comes from your device locale and may not match your physical location.",
+  "moreCountriesLater": "You can add more countries later in Settings.",
+  "selectCountry": "Select a country",
+  "saving": "Saving...",
+  "continueLabel": "Continue",
+  "filter": "Filter",
+  "clearFilter": "Clear filter",
+  "offline": "Offline",
+  "filterStations": "Filter stations",
+  "more": "More",
+  "debugView": "Debug view",
+  "settings": "Settings",
+  "noStationsAvailable": "No stations available right now.",
+  "clear": "Clear",
+  "stationCount": "{count, plural, =1{1 station} other{{count} stations}}",
+  "@stationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filteredStationCount": "{count, plural, =1{1 filtered station} other{{count} filtered stations}}",
+  "@filteredStationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "categories": "Categories",
+  "recentlyPlayed": "Recently played",
+  "noRecentlyPlayed": "No recently played stations.",
+  "stationCountries": "Station countries",
+  "atLeastOneCountry": "At least one country must remain selected.",
+  "diasporaCountryNote": "Diaspora stations are automatically included when you select any former Yugoslav country.",
+  "selectedCountries": "Selected countries",
+  "dragToReorder": "Drag to reorder",
+  "addCountry": "Add country",
+  "done": "Done",
+  "searchCountries": "Search countries",
+  "searchCountriesHint": "Serbia or RS",
+  "noCountriesAvailable": "No countries available.",
+  "stations": "Stations",
+  "noFavoritesInCategory": "No favorites in {category} yet. Save stations from Stations to build this category.",
+  "@noFavoritesInCategory": {
+    "placeholders": {
+      "category": {}
+    }
+  },
+  "nowPlaying": "Now playing",
+  "back": "Back",
+  "nothingPlaying": "Nothing is playing.",
+  "previousFavorite": "Previous favorite",
+  "pause": "Pause",
+  "play": "Play",
+  "nextFavorite": "Next favorite",
+  "track": "Track",
+  "stream": "Stream",
+  "genre": "Genre",
+  "location": "Location",
+  "tags": "Tags",
+  "codec": "Codec",
+  "bitrate": "Bitrate",
+  "sleepTimer": "Sleep timer",
+  "sleepTimerWithRemaining": "Sleep timer: {remaining}",
+  "@sleepTimerWithRemaining": {
+    "placeholders": {
+      "remaining": {}
+    }
+  },
+  "off": "Off",
+  "custom": "Custom",
+  "customSleepTimer": "Custom sleep timer",
+  "minutes": "Minutes",
+  "enterPositiveNumber": "Enter a number greater than 0.",
+  "cancel": "Cancel",
+  "start": "Start",
+  "internetConnectionLost": "Internet connection lost",
+  "streamStoppedResponding": "Stream stopped responding",
+  "playbackStalled": "Playback stalled",
+  "playbackFailed": "Playback failed",
+  "bufferingStream": "Buffering stream...",
+  "paused": "Paused",
+  "durationMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@durationMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@durationHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHoursMinutes": "{hours} h {minutes} min",
+  "@durationHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "lessThanOneMinute": "less than 1 min",
+  "manualStations": "Manual stations",
+  "noManualStations": "No manually added stations.",
+  "batteryUsage": "Battery usage",
+  "batteryUsageDescription": "Set NoAds Radio to Unrestricted in Android settings.",
+  "showStationIcon": "Show station icon",
+  "showStationIconDescription": "Display station artwork in lists and the player bar.",
+  "autoPlayNextFavorite": "Auto-play next favorite",
+  "autoPlayNextFavoriteDescription": "When a stream fails, move to the next favorite and wrap to the start.",
+  "autoPlayNextFavoriteDisabledDescription": "When a stream fails, move to the next favorite and wrap to the start. Add at least two favorites to enable this option.",
+  "couldNotOpenAndroidSettings": "Could not open Android app settings on this device.",
+  "noRecentlyPlayedYet": "No recently played stations yet.",
+  "categoriesDescription": "Add as many categories as you like. Only the first 2 will be visible as tabs on the bottom.",
+  "favorites": "Favorites",
+  "newCategory": "New category",
+  "removeCategory": "Remove category",
+  "addCategory": "Add category",
+  "add": "Add",
+  "deleteAll": "Delete all",
+  "deleteStation": "Delete station",
+  "deleteAllManualStationsTitle": "Delete all manual stations?",
+  "deleteAllManualStationsDescription": "This removes all stations you added manually.",
+  "addStation": "Add station",
+  "stationName": "Station name",
+  "stationNameHint": "My station",
+  "streamUrl": "Stream URL",
+  "enterStationName": "Enter a station name.",
+  "enterValidStreamUrl": "Enter a valid stream URL.",
+  "activeSource": "Active source",
+  "noSourceLoaded": "No source loaded",
+  "stationLoadingLog": "Station loading log",
+  "noStationLoadingEvents": "No station loading events recorded.",
+  "playableStationCount": "{count, plural, =1{1 playable station loaded} other{{count} playable stations loaded}}",
+  "@playableStationCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "diaspora": "Diaspora",
+  "removeFavorite": "Remove favorite",
+  "saveFavorite": "Save favorite",
+  "unknown": "Unknown"
+}

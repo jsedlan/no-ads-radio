@@ -143,6 +143,7 @@ class RadioAppController extends ChangeNotifier {
   String? favoritesError;
   String discoverFilter = '';
   AppThemePreference themePreference = AppThemePreference.dark;
+  AppLanguagePreference languagePreference = AppLanguagePreference.system;
   bool showStationIcon = false;
   bool circleThroughFavorites = true;
   List<String> countryCodes = const <String>[];
@@ -222,6 +223,7 @@ class RadioAppController extends ChangeNotifier {
       favoritesByCategory = await _favoritesStore.loadFavorites();
       final settings = await _settingsStore.loadSettings();
       themePreference = settings.themePreference;
+      languagePreference = settings.languagePreference;
       showStationIcon = settings.showStationIcon;
       circleThroughFavorites = settings.circleThroughFavorites;
       countryCodes = settings.countryCodes;
@@ -777,6 +779,15 @@ class RadioAppController extends ChangeNotifier {
     await _saveSettings();
   }
 
+  Future<void> setLanguagePreference(AppLanguagePreference value) async {
+    if (languagePreference == value) {
+      return;
+    }
+    languagePreference = value;
+    notifyListeners();
+    await _saveSettings();
+  }
+
   Future<void> setCircleThroughFavorites(bool value) async {
     circleThroughFavorites = value;
     notifyListeners();
@@ -998,6 +1009,7 @@ class RadioAppController extends ChangeNotifier {
     await _settingsStore.saveSettings(
       AppSettings(
         themePreference: themePreference,
+        languagePreference: languagePreference,
         showStationIcon: showStationIcon,
         circleThroughFavorites: circleThroughFavorites,
         countryCodes: countryCodes,

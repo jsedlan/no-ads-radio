@@ -26,7 +26,7 @@ class _DebugViewPageState extends State<_DebugViewPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Debug view',
+                    context.l10n.debugView,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -67,7 +67,7 @@ class _DebugView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Active source',
+                context.l10n.activeSource,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: _mutedTextColor(context),
                   fontWeight: FontWeight.w700,
@@ -75,14 +75,15 @@ class _DebugView extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                controller.activeCatalogSource?.label ?? 'No source loaded',
+                controller.activeCatalogSource?.label ??
+                    context.l10n.noSourceLoaded,
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 24),
               Text(
-                'Station loading log',
+                context.l10n.stationLoadingLog,
                 style: Theme.of(
                   context,
                 ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -90,7 +91,7 @@ class _DebugView extends StatelessWidget {
               const SizedBox(height: 10),
               if (controller.catalogLoadEvents.isEmpty)
                 Text(
-                  'No station loading events recorded.',
+                  context.l10n.noStationLoadingEvents,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: _mutedTextColor(context),
                   ),
@@ -158,7 +159,7 @@ class _CatalogLoadEventRow extends StatelessWidget {
                 if (event.stationCount != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    '${event.stationCount} playable stations loaded',
+                    context.l10n.playableStationCount(event.stationCount!),
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -446,7 +447,7 @@ class _StationTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  'Diaspora',
+                  context.l10n.diaspora,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w700,
@@ -468,7 +469,9 @@ class _StationTile extends StatelessWidget {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           visualDensity: VisualDensity.compact,
-          tooltip: isFavorite ? 'Remove favorite' : 'Save favorite',
+          tooltip: isFavorite
+              ? context.l10n.removeFavorite
+              : context.l10n.saveFavorite,
           onPressed: () => controller.toggleFavorite(station),
           icon: Icon(
             isFavorite ? Icons.favorite : Icons.favorite_border,
@@ -652,23 +655,34 @@ Color _selectedStationTileColor(BuildContext context) {
   );
 }
 
-String _selectedCountriesSummary(List<String> selectedCountryCodes) {
+String _selectedCountriesSummary(
+  BuildContext context,
+  List<String> selectedCountryCodes,
+) {
   final selectedOptions = _countryOptionsForCodes(selectedCountryCodes);
   if (selectedOptions.isEmpty) {
-    return 'Unknown';
+    return context.l10n.unknown;
   }
 
   final names = selectedOptions.map((option) => option.name).toList();
   return names.join(', ');
 }
 
-String _favoriteCategoriesSummary(List<FavoriteCategory> categories) {
+String _localizedCategoryName(BuildContext context, String categoryName) {
+  final normalized = categoryName.trim();
+  return normalized == 'Favorites' ? context.l10n.favorites : normalized;
+}
+
+String _favoriteCategoriesSummary(
+  BuildContext context,
+  List<FavoriteCategory> categories,
+) {
   final normalized = categories
-      .map((category) => category.name.trim())
+      .map((category) => _localizedCategoryName(context, category.name))
       .where((value) => value.isNotEmpty)
       .toList(growable: false);
   if (normalized.isEmpty) {
-    return 'Favorites';
+    return context.l10n.favorites;
   }
   return normalized.join(', ');
 }

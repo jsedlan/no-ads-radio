@@ -15,9 +15,24 @@ enum AppThemePreference {
   }
 }
 
+enum AppLanguagePreference {
+  system,
+  english,
+  serbianLatin;
+
+  static AppLanguagePreference fromStorage(String? value) {
+    return switch (value) {
+      'english' => AppLanguagePreference.english,
+      'serbianLatin' => AppLanguagePreference.serbianLatin,
+      _ => AppLanguagePreference.system,
+    };
+  }
+}
+
 class AppSettings {
   const AppSettings({
     this.themePreference = AppThemePreference.dark,
+    this.languagePreference = AppLanguagePreference.system,
     this.showStationIcon = false,
     this.circleThroughFavorites = true,
     this.countryCodes = const <String>[],
@@ -30,6 +45,7 @@ class AppSettings {
   });
 
   final AppThemePreference themePreference;
+  final AppLanguagePreference languagePreference;
   final bool showStationIcon;
   final bool circleThroughFavorites;
   final List<String> countryCodes;
@@ -40,6 +56,7 @@ class AppSettings {
 
   AppSettings copyWith({
     AppThemePreference? themePreference,
+    AppLanguagePreference? languagePreference,
     bool? showStationIcon,
     bool? circleThroughFavorites,
     List<String>? countryCodes,
@@ -50,6 +67,7 @@ class AppSettings {
   }) {
     return AppSettings(
       themePreference: themePreference ?? this.themePreference,
+      languagePreference: languagePreference ?? this.languagePreference,
       showStationIcon: showStationIcon ?? this.showStationIcon,
       circleThroughFavorites:
           circleThroughFavorites ?? this.circleThroughFavorites,
@@ -74,6 +92,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
 
   static const String _showStationIconKey = 'show_station_icon';
   static const String _themePreferenceKey = 'theme_preference';
+  static const String _languagePreferenceKey = 'language_preference';
   static const String _circleThroughFavoritesKey = 'circle_through_favorites';
   static const String _countryCodesKey = 'country_codes';
   static const String _hasCompletedCountrySetupKey =
@@ -92,6 +111,9 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     return AppSettings(
       themePreference: AppThemePreference.fromStorage(
         _preferences.getString(_themePreferenceKey),
+      ),
+      languagePreference: AppLanguagePreference.fromStorage(
+        _preferences.getString(_languagePreferenceKey),
       ),
       showStationIcon: _preferences.getBool(_showStationIconKey) ?? false,
       circleThroughFavorites:
@@ -117,6 +139,10 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     await _preferences.setString(
       _themePreferenceKey,
       settings.themePreference.name,
+    );
+    await _preferences.setString(
+      _languagePreferenceKey,
+      settings.languagePreference.name,
     );
     await _preferences.setBool(_showStationIconKey, settings.showStationIcon);
     await _preferences.setBool(
