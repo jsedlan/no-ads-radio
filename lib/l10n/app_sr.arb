@@ -68,6 +68,20 @@
   "pause": "Pauziraj",
   "play": "Pusti",
   "nextFavorite": "Sledeća omiljena",
+  "cast": "Prebaci reprodukciju",
+  "castDevices": "Cast uređaji",
+  "castingTo": "Reprodukcija na uređaju {device}",
+  "@castingTo": {
+    "placeholders": {
+      "device": {}
+    }
+  },
+  "disconnect": "Prekini vezu",
+  "searchingCastDevices": "Traženje Cast uređaja...",
+  "noCastDevices": "Nije pronađen nijedan Cast uređaj. Proverite da li su oba uređaja na istoj Wi-Fi mreži.",
+  "iosCastPermissionHelp": "Na iPhone uređaju dozvolite pristup lokalnoj mreži u Podešavanja > Privatnost i bezbednost > Lokalna mreža > NoAds Radio, pa pokušajte ponovo.",
+  "searchAgain": "Traži ponovo",
+  "castConnectionFailed": "Povezivanje sa Cast uređajem nije uspelo.",
   "track": "Pesma",
   "stream": "Strim",
   "genre": "Žanr",

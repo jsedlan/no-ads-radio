@@ -181,6 +181,38 @@ class AppLocalizationsSr extends AppLocalizations {
   String get nextFavorite => 'Sledeća omiljena';
 
   @override
+  String get cast => 'Prebaci reprodukciju';
+
+  @override
+  String get castDevices => 'Cast uređaji';
+
+  @override
+  String castingTo(Object device) {
+    return 'Reprodukcija na uređaju $device';
+  }
+
+  @override
+  String get disconnect => 'Prekini vezu';
+
+  @override
+  String get searchingCastDevices => 'Traženje Cast uređaja...';
+
+  @override
+  String get noCastDevices =>
+      'Nije pronađen nijedan Cast uređaj. Proverite da li su oba uređaja na istoj Wi-Fi mreži.';
+
+  @override
+  String get iosCastPermissionHelp =>
+      'Na iPhone uređaju dozvolite pristup lokalnoj mreži u Podešavanja > Privatnost i bezbednost > Lokalna mreža > NoAds Radio, pa pokušajte ponovo.';
+
+  @override
+  String get searchAgain => 'Traži ponovo';
+
+  @override
+  String get castConnectionFailed =>
+      'Povezivanje sa Cast uređajem nije uspelo.';
+
+  @override
   String get track => 'Pesma';
 
   @override
@@ -582,6 +614,38 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
 
   @override
   String get nextFavorite => 'Sledeća omiljena';
+
+  @override
+  String get cast => 'Prebaci reprodukciju';
+
+  @override
+  String get castDevices => 'Cast uređaji';
+
+  @override
+  String castingTo(Object device) {
+    return 'Reprodukcija na uređaju $device';
+  }
+
+  @override
+  String get disconnect => 'Prekini vezu';
+
+  @override
+  String get searchingCastDevices => 'Traženje Cast uređaja...';
+
+  @override
+  String get noCastDevices =>
+      'Nije pronađen nijedan Cast uređaj. Proverite da li su oba uređaja na istoj Wi-Fi mreži.';
+
+  @override
+  String get iosCastPermissionHelp =>
+      'Na iPhone uređaju dozvolite pristup lokalnoj mreži u Podešavanja > Privatnost i bezbednost > Lokalna mreža > NoAds Radio, pa pokušajte ponovo.';
+
+  @override
+  String get searchAgain => 'Traži ponovo';
+
+  @override
+  String get castConnectionFailed =>
+      'Povezivanje sa Cast uređajem nije uspelo.';
 
   @override
   String get track => 'Pesma';

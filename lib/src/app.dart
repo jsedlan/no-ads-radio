@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +10,7 @@ import 'controllers/radio_app_controller.dart';
 import 'models/favorite_category.dart';
 import 'models/radio_station.dart';
 import 'services/android_settings_launcher.dart';
+import 'services/cast_service.dart';
 import 'services/settings_store.dart';
 import 'services/station_catalog_diagnostics.dart';
 
@@ -72,7 +74,7 @@ ThemeData _buildAppTheme(Brightness brightness) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFFEF6C32),
+      seedColor: const Color(0xFF2563EB),
       brightness: brightness,
     ),
     textTheme: textTheme.apply(bodyColor: onSurface, displayColor: onSurface),
@@ -350,7 +352,8 @@ class _CompactTopTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = selected ? const Color(0xFFFF8A5B) : _mutedTextColor(context);
+    final activeColor = theme.colorScheme.onSurface;
+    final color = selected ? activeColor : _mutedTextColor(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -360,11 +363,11 @@ class _CompactTopTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           color: highlighted
-              ? const Color(0xFFFF8A5B).withValues(alpha: 0.16)
+              ? activeColor.withValues(alpha: 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: highlighted
-              ? Border.all(color: const Color(0xFFFF8A5B))
+              ? Border.all(color: activeColor.withValues(alpha: 0.35))
               : null,
         ),
         child: Column(
@@ -522,40 +525,6 @@ class _HeaderState extends State<_Header> {
                   child: SizedBox(height: 48, child: _buildSearchField()),
                 )
               else ...[
-                if (controller.isOffline) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: theme.colorScheme.error.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.cloud_off_rounded,
-                          size: 16,
-                          color: theme.colorScheme.error,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          context.l10n.offline,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.error,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
                 Expanded(
                   child: SizedBox(
                     height: 48,
@@ -807,14 +776,7 @@ class _PlayerBar extends StatelessWidget {
         top: false,
         child: InkWell(
           onTap: canOpenNowPlaying
-              ? () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) =>
-                          _NowPlayingScreen(controller: controller),
-                    ),
-                  );
-                }
+              ? () => _openNowPlayingScreen(context, controller)
               : null,
           child: SizedBox(
             height: 56,
@@ -844,7 +806,11 @@ class _PlayerBar extends StatelessWidget {
                           ),
                   ),
                   const SizedBox(width: 8),
-                  ..._playerBarActions(playback, hasStation: station != null),
+                  ..._playerBarActions(
+                    context,
+                    playback,
+                    hasStation: station != null,
+                  ),
                 ],
               ),
             ),
@@ -855,10 +821,12 @@ class _PlayerBar extends StatelessWidget {
   }
 
   List<Widget> _playerBarActions(
+    BuildContext context,
     PlaybackSnapshot playback, {
     required bool hasStation,
   }) {
     return <Widget>[
+      if (controller.casting.isAvailable) _CastButton(controller: controller),
       if (playback.isLoading)
         const SizedBox(
           width: 22,
@@ -913,6 +881,10 @@ class _NowPlayingScreen extends StatelessWidget {
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.arrow_back_rounded),
                 ),
+                actions: [
+                  if (controller.casting.isAvailable)
+                    _CastButton(controller: controller),
+                ],
               ),
               body: station == null
                   ? Center(child: Text(context.l10n.nothingPlaying))
@@ -926,6 +898,232 @@ class _NowPlayingScreen extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+void _openNowPlayingScreen(
+  BuildContext context,
+  RadioAppController controller,
+) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (context) => _NowPlayingScreen(controller: controller),
+    ),
+  );
+}
+
+class _CastButton extends StatelessWidget {
+  const _CastButton({required this.controller});
+
+  final RadioAppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final casting = controller.casting;
+    return IconButton(
+      tooltip: casting.isConnected && casting.deviceName != null
+          ? context.l10n.castingTo(casting.deviceName!)
+          : context.l10n.cast,
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _showCastDevices(context, controller),
+      icon: Icon(
+        casting.isConnected ? Icons.cast_connected_rounded : Icons.cast_rounded,
+        color: casting.isConnected
+            ? Theme.of(context).colorScheme.primary
+            : null,
+      ),
+    );
+  }
+}
+
+Future<void> _showCastDevices(
+  BuildContext context,
+  RadioAppController controller,
+) async {
+  await controller.startCastDiscovery();
+  if (!context.mounted) {
+    return;
+  }
+  try {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _CastDeviceSheet(controller: controller),
+    );
+  } finally {
+    await controller.stopCastDiscovery();
+  }
+}
+
+class _CastDeviceSheet extends StatefulWidget {
+  const _CastDeviceSheet({required this.controller});
+
+  final RadioAppController controller;
+
+  @override
+  State<_CastDeviceSheet> createState() => _CastDeviceSheetState();
+}
+
+class _CastDeviceSheetState extends State<_CastDeviceSheet> {
+  static const Duration _searchTimeout = Duration(seconds: 8);
+  Timer? _searchTimer;
+  bool _searchTimedOut = false;
+
+  RadioAppController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _startSearchTimer();
+  }
+
+  void _startSearchTimer() {
+    _searchTimer?.cancel();
+    _searchTimedOut = false;
+    _searchTimer = Timer(_searchTimeout, () {
+      if (mounted && controller.casting.devices.isEmpty) {
+        setState(() => _searchTimedOut = true);
+      }
+    });
+  }
+
+  Future<void> _searchAgain() async {
+    setState(() => _searchTimedOut = false);
+    await controller.stopCastDiscovery();
+    await controller.startCastDiscovery();
+    _startSearchTimer();
+  }
+
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final casting = controller.casting;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.l10n.castDevices,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                if (casting.isConnected)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.cast_connected_rounded),
+                    title: Text(
+                      context.l10n.castingTo(
+                        casting.deviceName ?? context.l10n.unknown,
+                      ),
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        await controller.disconnectFromCast();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Text(context.l10n.disconnect),
+                    ),
+                  )
+                else if (casting.connectionStatus ==
+                    CastConnectionStatus.connecting)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (casting.devices.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        if (!_searchTimedOut) ...[
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            context.l10n.searchingCastDevices,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Text(
+                          context.l10n.noCastDevices,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: _mutedTextColor(context)),
+                        ),
+                        if (_searchTimedOut && Platform.isIOS) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            context.l10n.iosCastPermissionHelp,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: _mutedTextColor(context)),
+                          ),
+                        ],
+                        if (_searchTimedOut) ...[
+                          const SizedBox(height: 16),
+                          FilledButton.tonalIcon(
+                            onPressed: _searchAgain,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: Text(context.l10n.searchAgain),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                else
+                  ...casting.devices.map(
+                    (device) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.cast_rounded),
+                      title: Text(device.name),
+                      subtitle: device.modelName == null
+                          ? null
+                          : Text(device.modelName!),
+                      onTap: () =>
+                          _connectToCastDevice(context, controller, device),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+Future<void> _connectToCastDevice(
+  BuildContext context,
+  RadioAppController controller,
+  CastDevice device,
+) async {
+  try {
+    await controller.connectToCastDevice(device);
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.castConnectionFailed)),
+      );
+    }
   }
 }
 
@@ -950,6 +1148,9 @@ class _NowPlayingBody extends StatelessWidget {
       stationName: station.displayName,
       l10n: context.l10n,
     );
+    final hasInternetOutage =
+        controller.playbackStalled &&
+        controller.playbackStallReason == PlaybackStallReason.internetOutage;
     final title = _cleanNowPlayingMetadata(
       playback.nowPlaying?.displayTitle,
       stationName: station.displayName,
@@ -983,7 +1184,7 @@ class _NowPlayingBody extends StatelessWidget {
             status,
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: playback.hasError
+              color: playback.hasError || hasInternetOutage
                   ? theme.colorScheme.error
                   : _mutedTextColor(context),
               fontWeight: FontWeight.w700,
@@ -1099,7 +1300,7 @@ class _LargePlaybackButton extends StatelessWidget {
     final iconWidget = Icon(icon, size: prominent ? 40 : 34);
 
     return prominent
-        ? IconButton.filled(
+        ? IconButton.filledTonal(
             tooltip: tooltip,
             style: style,
             onPressed: onPressed,
@@ -1359,15 +1560,18 @@ class _PlayerBarText extends StatelessWidget {
       stationName: station.displayName,
       l10n: context.l10n,
     );
+    final hasInternetOutage =
+        playbackStalled &&
+        playbackStallReason == PlaybackStallReason.internetOutage;
     final metadata = playback.isPlaying
         ? _cleanNowPlayingMetadata(
             playback.nowPlaying?.stationName,
             stationName: station.displayName,
           )
         : null;
+    final displayStatus = hasInternetOutage ? context.l10n.offline : status;
     final parts = <String>[
-      station.displayName,
-      ?status,
+      ?displayStatus,
       if (metadata != null && metadata.isNotEmpty) metadata,
       if (sleepTimerRemaining > Duration.zero)
         context.l10n.sleepTimerWithRemaining(
@@ -1377,9 +1581,10 @@ class _PlayerBarText extends StatelessWidget {
     final message = parts.join('  •  ');
 
     return _ChyronText(
+      key: ValueKey(message),
       text: message,
       style: textStyle.copyWith(
-        color: playback.hasError
+        color: playback.hasError || hasInternetOutage
             ? theme.colorScheme.error
             : theme.colorScheme.onSurface,
       ),
@@ -1480,7 +1685,7 @@ String _normalizeNowPlayingTokens(String value) {
 }
 
 class _ChyronText extends StatefulWidget {
-  const _ChyronText({required this.text, required this.style});
+  const _ChyronText({super.key, required this.text, required this.style});
 
   final String text;
   final TextStyle style;
@@ -1489,97 +1694,33 @@ class _ChyronText extends StatefulWidget {
   State<_ChyronText> createState() => _ChyronTextState();
 }
 
-class _ChyronTextState extends State<_ChyronText> {
-  late final ScrollController _scrollController;
-  Timer? _delayTimer;
-  int _animationGeneration = 0;
+class _ChyronTextState extends State<_ChyronText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  final GlobalKey _cycleKey = GlobalKey();
+  bool _measureScheduled = false;
+  double? _cycleDistance;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+    _controller = AnimationController(vsync: this);
   }
 
   @override
   void didUpdateWidget(covariant _ChyronText oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text) {
-      _animationGeneration += 1;
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(0);
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+    if (oldWidget.text != widget.text || oldWidget.style != widget.style) {
+      _cycleDistance = null;
+      _controller.value = 0;
+      _scheduleCycleMeasure();
     }
   }
 
   @override
   void dispose() {
-    _delayTimer?.cancel();
-    _scrollController.dispose();
+    _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _start() async {
-    final generation = _animationGeneration;
-    if (!mounted || !_scrollController.hasClients) {
-      return;
-    }
-
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    if (maxScroll <= 0) {
-      return;
-    }
-
-    await _delay(const Duration(seconds: 2), generation);
-    if (!mounted ||
-        !_scrollController.hasClients ||
-        generation != _animationGeneration) {
-      return;
-    }
-    while (mounted &&
-        _scrollController.hasClients &&
-        generation == _animationGeneration) {
-      final distance = _scrollController.position.maxScrollExtent;
-      if (distance <= 0) {
-        return;
-      }
-      await _scrollController.animateTo(
-        distance,
-        duration: Duration(
-          milliseconds: (distance * 35).round().clamp(3500, 20000),
-        ),
-        curve: Curves.linear,
-      );
-      if (!mounted ||
-          !_scrollController.hasClients ||
-          generation != _animationGeneration) {
-        return;
-      }
-      await _delay(const Duration(seconds: 1), generation);
-      if (!mounted ||
-          !_scrollController.hasClients ||
-          generation != _animationGeneration) {
-        return;
-      }
-      _scrollController.jumpTo(0);
-      await _delay(const Duration(seconds: 1), generation);
-    }
-  }
-
-  Future<void> _delay(Duration duration, int generation) {
-    _delayTimer?.cancel();
-    final completer = Completer<void>();
-    _delayTimer = Timer(duration, () {
-      if (!completer.isCompleted) {
-        completer.complete();
-      }
-    });
-    return completer.future.whenComplete(() {
-      if (generation == _animationGeneration) {
-        _delayTimer = null;
-      }
-    });
   }
 
   @override
@@ -1587,21 +1728,136 @@ class _ChyronTextState extends State<_ChyronText> {
     return SizedBox(
       height: 24,
       child: ClipRect(
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          scrollDirection: Axis.horizontal,
-          physics: const NeverScrollableScrollPhysics(),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              widget.text,
-              maxLines: 1,
-              softWrap: false,
-              style: widget.style,
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            _scheduleCycleMeasure();
+            final cycleDistance = _cycleDistance;
+
+            if (cycleDistance == null) {
+              return Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.text,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: widget.style,
+                    ),
+                  ),
+                  Opacity(
+                    opacity: 0,
+                    child: OverflowBox(
+                      minWidth: 0,
+                      maxWidth: double.infinity,
+                      alignment: Alignment.centerLeft,
+                      child: _ChyronTextCycle(
+                        key: _cycleKey,
+                        text: widget.text,
+                        style: widget.style,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            if (cycleDistance <= constraints.maxWidth) {
+              _controller.stop();
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.text,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: widget.style,
+                ),
+              );
+            }
+
+            if (!_controller.isAnimating) {
+              _controller.duration = Duration(
+                milliseconds: (cycleDistance * 35).round().clamp(3500, 20000),
+              );
+              _controller.repeat();
+            }
+
+            return AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return OverflowBox(
+                  minWidth: 0,
+                  maxWidth: double.infinity,
+                  alignment: Alignment.centerLeft,
+                  child: Transform.translate(
+                    offset: Offset(-cycleDistance * _controller.value, 0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ChyronTextCycle(
+                          text: widget.text,
+                          style: widget.style,
+                        ),
+                        _ChyronTextCycle(
+                          text: widget.text,
+                          style: widget.style,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
       ),
+    );
+  }
+
+  void _scheduleCycleMeasure() {
+    if (_measureScheduled) {
+      return;
+    }
+    _measureScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measureScheduled = false;
+      if (!mounted) {
+        return;
+      }
+      final renderBox =
+          _cycleKey.currentContext?.findRenderObject() as RenderBox?;
+      final measuredWidth = renderBox?.size.width;
+      if (measuredWidth == null || measuredWidth <= 0) {
+        return;
+      }
+      if (_cycleDistance == measuredWidth) {
+        return;
+      }
+      setState(() {
+        _cycleDistance = measuredWidth;
+        _controller.stop();
+        _controller.value = 0;
+      });
+    });
+  }
+}
+
+class _ChyronTextCycle extends StatelessWidget {
+  const _ChyronTextCycle({super.key, required this.text, required this.style});
+
+  static const String _separator = '  •  ';
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(text, maxLines: 1, softWrap: false, style: style),
+        Text(_separator, maxLines: 1, softWrap: false, style: style),
+      ],
     );
   }
 }

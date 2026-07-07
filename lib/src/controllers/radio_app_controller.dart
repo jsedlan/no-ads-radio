@@ -7,6 +7,7 @@ import '../models/favorite_category.dart';
 import '../models/radio_station.dart';
 import '../models/search_query.dart';
 import '../services/connectivity_service.dart';
+import '../services/cast_service.dart';
 import '../services/favorites_store.dart';
 import '../services/settings_store.dart';
 import '../services/station_catalog_diagnostics.dart';
@@ -55,25 +56,32 @@ class RadioAppController extends ChangeNotifier {
     required FavoritesStore favoritesStore,
     required SettingsStore settingsStore,
     required AudioEngine audioEngine,
+    required CastService castService,
     required ConnectivityService connectivityService,
     required String startupCountryCode,
     required Duration playbackStallThreshold,
     required Duration playbackStallPollInterval,
+    required Duration streamRecoveryRetryInterval,
+    required Duration streamRecoveryWindow,
     required List<StationCatalogLoadEvent> initialCatalogLoadEvents,
     required StationCatalogSource? initialActiveCatalogSource,
   }) : _repository = repository,
        _favoritesStore = favoritesStore,
        _settingsStore = settingsStore,
        _audioEngine = audioEngine,
+       _castService = castService,
        _connectivityService = connectivityService,
        _startupCountryCode = startupCountryCode,
        _playbackStallThreshold = playbackStallThreshold,
        _playbackStallPollInterval = playbackStallPollInterval,
+       _streamRecoveryRetryInterval = streamRecoveryRetryInterval,
+       _streamRecoveryWindow = streamRecoveryWindow,
        catalogLoadEvents = List<StationCatalogLoadEvent>.from(
          initialCatalogLoadEvents,
        ),
        activeCatalogSource = initialActiveCatalogSource {
     _audioEngine.snapshot.addListener(_handlePlaybackSnapshot);
+    _castService.snapshot.addListener(_handleCastSnapshot);
     _connectivityService.snapshot.addListener(_handleConnectivitySnapshot);
   }
 
@@ -82,10 +90,13 @@ class RadioAppController extends ChangeNotifier {
     required FavoritesStore favoritesStore,
     required SettingsStore settingsStore,
     required AudioEngine audioEngine,
+    CastService? castService,
     required ConnectivityService connectivityService,
     String startupCountryCode = '',
     Duration playbackStallThreshold = const Duration(seconds: 8),
     Duration playbackStallPollInterval = const Duration(seconds: 1),
+    Duration streamRecoveryRetryInterval = const Duration(seconds: 5),
+    Duration streamRecoveryWindow = const Duration(seconds: 30),
     List<StationCatalogLoadEvent> initialCatalogLoadEvents =
         const <StationCatalogLoadEvent>[],
     StationCatalogSource? initialActiveCatalogSource,
@@ -95,10 +106,13 @@ class RadioAppController extends ChangeNotifier {
       favoritesStore: favoritesStore,
       settingsStore: settingsStore,
       audioEngine: audioEngine,
+      castService: castService ?? DisabledCastService(),
       connectivityService: connectivityService,
       startupCountryCode: startupCountryCode,
       playbackStallThreshold: playbackStallThreshold,
       playbackStallPollInterval: playbackStallPollInterval,
+      streamRecoveryRetryInterval: streamRecoveryRetryInterval,
+      streamRecoveryWindow: streamRecoveryWindow,
       initialCatalogLoadEvents: initialCatalogLoadEvents,
       initialActiveCatalogSource: initialActiveCatalogSource,
     );
@@ -110,10 +124,13 @@ class RadioAppController extends ChangeNotifier {
   final FavoritesStore _favoritesStore;
   final SettingsStore _settingsStore;
   final AudioEngine _audioEngine;
+  final CastService _castService;
   final ConnectivityService _connectivityService;
   final String _startupCountryCode;
   final Duration _playbackStallThreshold;
   final Duration _playbackStallPollInterval;
+  final Duration _streamRecoveryRetryInterval;
+  final Duration _streamRecoveryWindow;
   static const Duration _internetRetryInterval = Duration(seconds: 5);
   static const List<Duration> sleepTimerOptions = <Duration>[
     Duration(minutes: 15),
@@ -154,6 +171,7 @@ class RadioAppController extends ChangeNotifier {
   StationSearchQuery activeSearchQuery = const StationSearchQuery();
   RadioStation? currentStation;
   PlaybackSnapshot playback = const PlaybackSnapshot.idle();
+  CastSnapshot casting = const CastSnapshot.unavailable();
   ConnectivitySnapshot connectivity = const ConnectivitySnapshot.unknown();
   bool playbackStalled = false;
   PlaybackStallReason? playbackStallReason;
@@ -162,6 +180,7 @@ class RadioAppController extends ChangeNotifier {
   int _activeFavoriteCategoryIndex = 0;
 
   bool get isOffline => connectivity.isOffline;
+  bool get isCasting => casting.isConnected;
   bool get isSleepTimerActive => sleepTimerEndsAt != null;
   Duration get sleepTimerRemaining {
     final endsAt = sleepTimerEndsAt;
@@ -208,6 +227,7 @@ class RadioAppController extends ChangeNotifier {
 
   Timer? _playbackStallTimer;
   Timer? _internetRetryTimer;
+  Timer? _streamRecoveryRetryTimer;
   Timer? _simulatedStallTimer;
   Timer? _sleepTimer;
   Duration _lastObservedPosition = Duration.zero;
@@ -215,9 +235,19 @@ class RadioAppController extends ChangeNotifier {
   DateTime? _lastPositionAdvancedAt;
   bool _isHandlingPlaybackStall = false;
   bool _isRetryingCurrentStation = false;
+  bool _isRetryingStreamFailure = false;
+  DateTime? _streamRecoveryStartedAt;
+  String? _streamRecoveryStationKey;
+  String? _currentStreamUrl;
 
   Future<void> _initialize() async {
     try {
+      try {
+        await _castService.initialize();
+        casting = _castService.snapshot.value;
+      } catch (_) {
+        casting = const CastSnapshot.unavailable();
+      }
       await _connectivityService.initialize();
       connectivity = _connectivityService.snapshot.value;
       favoritesByCategory = await _favoritesStore.loadFavorites();
@@ -606,7 +636,12 @@ class RadioAppController extends ChangeNotifier {
   Future<void> playStation(
     RadioStation station, {
     bool fromInternetRecoveryRetry = false,
+    bool fromStreamRecoveryRetry = false,
   }) async {
+    if (!fromInternetRecoveryRetry && !fromStreamRecoveryRetry) {
+      _stopInternetRecoveryRetryLoop();
+      _stopStreamRecoveryRetryLoop();
+    }
     currentStation = station;
     playbackStalled = false;
     playbackStallReason = null;
@@ -622,24 +657,29 @@ class RadioAppController extends ChangeNotifier {
       final url = station.bestStreamUrl.isNotEmpty
           ? station.bestStreamUrl
           : await _repository.resolveStreamUrl(station.stationUuid);
-      await _audioEngine.playStream(
-        url,
-        metadata: PlaybackMediaMetadata(
-          id: station.stationUuid,
-          title: station.displayName,
-          album: station.displayLocation.isEmpty
-              ? 'NoAds Radio'
-              : station.displayLocation,
-          artUri: station.hasArtwork
-              ? Uri.tryParse(station.favicon.trim())
-              : null,
-        ),
-      );
+      _currentStreamUrl = url;
+      if (isCasting) {
+        await _loadStationOnCast(station, url);
+      } else {
+        await _audioEngine.playStream(
+          url,
+          metadata: PlaybackMediaMetadata(
+            id: station.stationUuid,
+            title: station.displayName,
+            album: station.displayLocation.isEmpty
+                ? 'NoAds Radio'
+                : station.displayLocation,
+            artUri: station.hasArtwork
+                ? Uri.tryParse(station.favicon.trim())
+                : null,
+          ),
+        );
+      }
       await _handleImmediateRetryPlaybackFailureIfNeeded(
         station,
         fromInternetRecoveryRetry: fromInternetRecoveryRetry,
       );
-      if (!playback.hasError) {
+      if (!playback.hasError && !fromStreamRecoveryRetry) {
         await _recordRecentlyPlayed(station);
       }
     } catch (error) {
@@ -657,7 +697,11 @@ class RadioAppController extends ChangeNotifier {
 
   Future<void> resumePlayback() async {
     try {
-      await _audioEngine.resume();
+      if (isCasting) {
+        await _castService.resume();
+      } else {
+        await _audioEngine.resume();
+      }
     } catch (error) {
       playback = PlaybackSnapshot(
         status: PlaybackStatus.error,
@@ -669,8 +713,13 @@ class RadioAppController extends ChangeNotifier {
 
   Future<void> pausePlayback() async {
     _stopInternetRecoveryRetryLoop();
+    _stopStreamRecoveryRetryLoop();
     try {
-      await _audioEngine.pause();
+      if (isCasting) {
+        await _castService.pause();
+      } else {
+        await _audioEngine.pause();
+      }
     } catch (error) {
       playback = PlaybackSnapshot(
         status: PlaybackStatus.error,
@@ -699,11 +748,89 @@ class RadioAppController extends ChangeNotifier {
   Future<void> stopPlayback() async {
     _cancelSleepTimer(notify: false);
     _stopInternetRecoveryRetryLoop();
+    _stopStreamRecoveryRetryLoop();
+    if (isCasting) {
+      await _castService.stop();
+    }
     await _audioEngine.stop();
     currentStation = null;
+    _currentStreamUrl = null;
     _stopPlaybackStallWatchdog();
     playback = const PlaybackSnapshot.idle();
     notifyListeners();
+  }
+
+  Future<void> startCastDiscovery() => _castService.startDiscovery();
+
+  Future<void> stopCastDiscovery() => _castService.stopDiscovery();
+
+  Future<void> connectToCastDevice(CastDevice device) async {
+    final wasPlayingLocally = playback.isPlaying && !isCasting;
+    await _castService.connect(device);
+    final station = currentStation;
+    if (station == null) {
+      return;
+    }
+
+    final url = _currentStreamUrl ?? station.bestStreamUrl;
+    if (url.isEmpty) {
+      await _castService.disconnect();
+      throw StateError('The current station has no playable stream URL.');
+    }
+    try {
+      if (wasPlayingLocally) {
+        await _audioEngine.pause();
+      }
+      await _loadStationOnCast(station, url);
+    } catch (_) {
+      await _castService.disconnect();
+      if (wasPlayingLocally) {
+        await _audioEngine.resume();
+      }
+      playback = _audioEngine.snapshot.value;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> disconnectFromCast() async {
+    await _castService.disconnect();
+    if (currentStation != null) {
+      playback = PlaybackSnapshot(
+        status: PlaybackStatus.paused,
+        nowPlaying: playback.nowPlaying,
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadStationOnCast(RadioStation station, String url) async {
+    await _castService.load(
+      CastMedia(
+        url: url,
+        title: station.displayName,
+        album: station.displayLocation.isEmpty
+            ? 'NoAds Radio'
+            : station.displayLocation,
+        artUri: station.hasArtwork
+            ? Uri.tryParse(station.favicon.trim())
+            : null,
+        contentType: _castContentType(station, url),
+      ),
+    );
+  }
+
+  String _castContentType(RadioStation station, String url) {
+    if (station.hls || url.toLowerCase().contains('.m3u8')) {
+      return 'application/x-mpegURL';
+    }
+    return switch (station.codec.trim().toLowerCase()) {
+      'aac' || 'aac+' || 'heaac' => 'audio/aac',
+      'ogg' || 'opus' => 'audio/ogg',
+      'flac' => 'audio/flac',
+      'wav' => 'audio/wav',
+      _ => 'audio/mpeg',
+    };
   }
 
   void setSleepTimer(Duration? duration) {
@@ -1022,6 +1149,9 @@ class RadioAppController extends ChangeNotifier {
   }
 
   void _handlePlaybackSnapshot() {
+    if (isCasting) {
+      return;
+    }
     final previousPlayback = playback;
     playback = _audioEngine.snapshot.value;
     final didUpdatePlaybackStallDisplay = _trackPlaybackProgress(
@@ -1029,14 +1159,45 @@ class RadioAppController extends ChangeNotifier {
       bufferedPosition: playback.bufferedPosition,
     );
     if (playback.isPlaying) {
+      _stopStreamRecoveryRetryLoop();
       _startPlaybackStallWatchdog();
     } else {
       _stopPlaybackStallWatchdog();
     }
+    final didUpdateStreamRecoveryDisplay = _handleStreamRecoveryState();
     if (_playbackDisplayChanged(previousPlayback, playback) ||
-        didUpdatePlaybackStallDisplay) {
+        didUpdatePlaybackStallDisplay ||
+        didUpdateStreamRecoveryDisplay) {
       notifyListeners();
     }
+  }
+
+  void _handleCastSnapshot() {
+    final previousCasting = casting;
+    casting = _castService.snapshot.value;
+
+    if (casting.isConnected) {
+      final status = switch (casting.playbackStatus) {
+        CastPlaybackStatus.playing => PlaybackStatus.playing,
+        CastPlaybackStatus.loading => PlaybackStatus.loading,
+        CastPlaybackStatus.paused => PlaybackStatus.paused,
+        CastPlaybackStatus.error => PlaybackStatus.error,
+        CastPlaybackStatus.idle =>
+          currentStation == null ? PlaybackStatus.idle : PlaybackStatus.paused,
+      };
+      playback = PlaybackSnapshot(
+        status: status,
+        message: casting.message,
+        nowPlaying: playback.nowPlaying,
+      );
+      _stopPlaybackStallWatchdog();
+    } else if (previousCasting.isConnected && currentStation != null) {
+      playback = PlaybackSnapshot(
+        status: PlaybackStatus.paused,
+        nowPlaying: playback.nowPlaying,
+      );
+    }
+    notifyListeners();
   }
 
   void _handleConnectivitySnapshot() {
@@ -1054,6 +1215,7 @@ class RadioAppController extends ChangeNotifier {
       final previousStallReason = playbackStallReason;
       _connectivityService.reportOnline();
       _stopInternetRecoveryRetryLoop();
+      _stopStreamRecoveryRetryLoop();
       _lastObservedPosition = position;
       _lastObservedBufferedPosition = bufferedPosition;
       _lastPositionAdvancedAt = DateTime.now();
@@ -1211,6 +1373,80 @@ class RadioAppController extends ChangeNotifier {
     });
   }
 
+  bool _handleStreamRecoveryState() {
+    if (isCasting) {
+      return false;
+    }
+
+    if (playback.hasError && currentStation != null) {
+      return _startStreamRecoveryRetryLoop();
+    }
+
+    if (playback.isPaused || playback.status == PlaybackStatus.idle) {
+      _stopStreamRecoveryRetryLoop();
+    }
+    return false;
+  }
+
+  bool _startStreamRecoveryRetryLoop() {
+    final station = currentStation;
+    if (station == null) {
+      return false;
+    }
+
+    final wasStalled = playbackStalled;
+    final previousStallReason = playbackStallReason;
+    playbackStalled = true;
+    playbackStallReason = PlaybackStallReason.streamFailure;
+
+    if (_streamRecoveryRetryTimer != null &&
+        _streamRecoveryStationKey == station.identityKey) {
+      return wasStalled != playbackStalled ||
+          previousStallReason != playbackStallReason;
+    }
+
+    _streamRecoveryRetryTimer?.cancel();
+    _streamRecoveryStartedAt = DateTime.now();
+    _streamRecoveryStationKey = station.identityKey;
+    _streamRecoveryRetryTimer = Timer.periodic(
+      _streamRecoveryRetryInterval,
+      (_) => unawaited(_retryCurrentStationAfterStreamFailure()),
+    );
+
+    return wasStalled != playbackStalled ||
+        previousStallReason != playbackStallReason;
+  }
+
+  Future<void> _retryCurrentStationAfterStreamFailure() async {
+    final station = currentStation;
+    final startedAt = _streamRecoveryStartedAt;
+    if (_isRetryingStreamFailure ||
+        station == null ||
+        startedAt == null ||
+        playback.isLoading ||
+        !playback.hasError) {
+      return;
+    }
+
+    if (DateTime.now().difference(startedAt) >= _streamRecoveryWindow) {
+      _stopStreamRecoveryRetryLoop();
+      if (circleThroughFavorites && canCircleThroughFavorites) {
+        final nextFavorite = _nextFavoriteStationFor(station);
+        if (nextFavorite != null) {
+          await playStation(nextFavorite);
+        }
+      }
+      return;
+    }
+
+    _isRetryingStreamFailure = true;
+    try {
+      await playStation(station, fromStreamRecoveryRetry: true);
+    } finally {
+      _isRetryingStreamFailure = false;
+    }
+  }
+
   Future<void> _retryCurrentStationAfterInternetOutage() async {
     if (_isRetryingCurrentStation ||
         currentStation == null ||
@@ -1264,6 +1500,14 @@ class RadioAppController extends ChangeNotifier {
     _isRetryingCurrentStation = false;
   }
 
+  void _stopStreamRecoveryRetryLoop() {
+    _streamRecoveryRetryTimer?.cancel();
+    _streamRecoveryRetryTimer = null;
+    _isRetryingStreamFailure = false;
+    _streamRecoveryStartedAt = null;
+    _streamRecoveryStationKey = null;
+  }
+
   void _stopPlaybackStallWatchdog() {
     _playbackStallTimer?.cancel();
     _playbackStallTimer = null;
@@ -1292,12 +1536,15 @@ class RadioAppController extends ChangeNotifier {
   @override
   void dispose() {
     _audioEngine.snapshot.removeListener(_handlePlaybackSnapshot);
+    _castService.snapshot.removeListener(_handleCastSnapshot);
     _connectivityService.snapshot.removeListener(_handleConnectivitySnapshot);
     _playbackStallTimer?.cancel();
     _internetRetryTimer?.cancel();
+    _streamRecoveryRetryTimer?.cancel();
     _simulatedStallTimer?.cancel();
     _sleepTimer?.cancel();
     unawaited(_audioEngine.dispose());
+    unawaited(_castService.dispose());
     unawaited(_connectivityService.dispose());
     super.dispose();
   }

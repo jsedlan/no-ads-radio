@@ -100,6 +100,7 @@ class JustAudioEngine implements AudioEngine {
   final List<StreamSubscription<dynamic>> _subscriptions =
       <StreamSubscription<dynamic>>[];
   String? _currentUrl;
+  static const String _streamEndedMessage = 'Live stream ended unexpectedly.';
 
   @override
   ValueListenable<PlaybackSnapshot> get snapshot => _snapshot;
@@ -184,17 +185,10 @@ class JustAudioEngine implements AudioEngine {
     );
     if (state.processingState == ProcessingState.completed) {
       _snapshot.value = PlaybackSnapshot(
-        status: PlaybackStatus.paused,
-        nowPlaying: _snapshot.value.nowPlaying,
-        position: _snapshot.value.position,
-        bufferedPosition: _snapshot.value.bufferedPosition,
-      );
-      return;
-    }
-
-    if (state.playing) {
-      _snapshot.value = PlaybackSnapshot(
-        status: PlaybackStatus.playing,
+        status: _currentUrl == null
+            ? PlaybackStatus.paused
+            : PlaybackStatus.error,
+        message: _currentUrl == null ? null : _streamEndedMessage,
         nowPlaying: _snapshot.value.nowPlaying,
         position: _snapshot.value.position,
         bufferedPosition: _snapshot.value.bufferedPosition,
@@ -206,6 +200,16 @@ class JustAudioEngine implements AudioEngine {
         state.processingState == ProcessingState.buffering) {
       _snapshot.value = PlaybackSnapshot(
         status: PlaybackStatus.loading,
+        nowPlaying: _snapshot.value.nowPlaying,
+        position: _snapshot.value.position,
+        bufferedPosition: _snapshot.value.bufferedPosition,
+      );
+      return;
+    }
+
+    if (state.playing) {
+      _snapshot.value = PlaybackSnapshot(
+        status: PlaybackStatus.playing,
         nowPlaying: _snapshot.value.nowPlaying,
         position: _snapshot.value.position,
         bufferedPosition: _snapshot.value.bufferedPosition,
@@ -253,6 +257,13 @@ class JustAudioEngine implements AudioEngine {
 
   void _handlePlaybackEventError(Object error, StackTrace stackTrace) {
     _log('playbackEvent error: $error');
+    _snapshot.value = PlaybackSnapshot(
+      status: PlaybackStatus.error,
+      message: error.toString(),
+      nowPlaying: _snapshot.value.nowPlaying,
+      position: _snapshot.value.position,
+      bufferedPosition: _snapshot.value.bufferedPosition,
+    );
   }
 
   void _handlePlayingChanged(bool playing) {

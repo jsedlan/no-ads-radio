@@ -11,6 +11,7 @@ import 'package:no_ads_radio/src/models/radio_station.dart';
 import 'package:no_ads_radio/src/models/search_query.dart';
 import 'package:no_ads_radio/src/services/connectivity_service.dart';
 import 'package:no_ads_radio/src/services/catalog_station_repository.dart';
+import 'package:no_ads_radio/src/services/cast_service.dart';
 import 'package:no_ads_radio/src/services/fallback_station_repository.dart';
 import 'package:no_ads_radio/src/services/favorites_store.dart';
 import 'package:no_ads_radio/src/services/settings_store.dart';
@@ -241,6 +242,29 @@ void main() {
 
     await controller.stopPlayback();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('tapping current station opens now playing', (tester) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await controller.playStation(controller.discoverStations.first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Test Station 1').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Now playing'), findsOneWidget);
+
+    controller.dispose();
   });
 
   testWidgets('filtered station count provides a clear filter action', (
@@ -681,6 +705,130 @@ void main() {
     },
   );
 
+  test('controller retries a failed stream before giving up', () async {
+    final audioEngine = FakeAudioEngine();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: audioEngine,
+      connectivityService: FakeConnectivityService.online(),
+      streamRecoveryRetryInterval: const Duration(milliseconds: 10),
+      streamRecoveryWindow: const Duration(milliseconds: 100),
+    );
+
+    final station = controller.discoverStations.first;
+    await controller.playStation(station);
+    expect(audioEngine.playStreamCount, 1);
+
+    audioEngine.emitSnapshot(
+      const PlaybackSnapshot(
+        status: PlaybackStatus.error,
+        message: 'stream ended',
+      ),
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+
+    expect(controller.currentStation?.identityKey, station.identityKey);
+    expect(controller.playback.isPlaying, isTrue);
+    expect(audioEngine.playStreamCount, greaterThanOrEqualTo(2));
+
+    controller.dispose();
+  });
+
+  test(
+    'controller advances to next favorite when stream retries keep failing',
+    () async {
+      final audioEngine = FakeAudioEngine()
+        ..failingUrls.addAll(<String>[
+          'https://example.com/0',
+          'https://example.com/0/stream',
+          'https://example.com/station-0.mp3',
+        ]);
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: audioEngine,
+        connectivityService: FakeConnectivityService.online(),
+        streamRecoveryRetryInterval: const Duration(milliseconds: 5),
+        streamRecoveryWindow: const Duration(milliseconds: 25),
+      );
+
+      final first = controller.discoverStations[0];
+      final second = controller.discoverStations[1];
+      await controller.toggleFavorite(first);
+      await controller.toggleFavorite(second);
+
+      await controller.playStation(first);
+      await Future<void>.delayed(const Duration(milliseconds: 45));
+
+      expect(audioEngine.playStreamCount, greaterThan(1));
+      expect(controller.currentStation?.identityKey, second.identityKey);
+      expect(controller.playback.isPlaying, isTrue);
+
+      controller.dispose();
+    },
+  );
+
+  test('controller hands playback controls to an active Cast device', () async {
+    final audioEngine = FakeAudioEngine();
+    final castService = FakeCastService();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: audioEngine,
+      castService: castService,
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    final station = controller.discoverStations.first;
+    await controller.playStation(station);
+    await controller.connectToCastDevice(castService.device);
+
+    expect(controller.isCasting, isTrue);
+    expect(audioEngine.pauseCount, 1);
+    expect(castService.loadedMedia?.title, station.displayName);
+    expect(castService.loadedMedia?.contentType, 'audio/mpeg');
+
+    await controller.pausePlayback();
+    await controller.resumePlayback();
+    await controller.stopPlayback();
+
+    expect(castService.pauseCount, 1);
+    expect(castService.resumeCount, 1);
+    expect(castService.stopCount, 1);
+    controller.dispose();
+  });
+
+  test('controller restores local playback when Cast loading fails', () async {
+    final audioEngine = FakeAudioEngine();
+    final castService = FakeCastService()..failLoading = true;
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: audioEngine,
+      castService: castService,
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await controller.playStation(controller.discoverStations.first);
+
+    await expectLater(
+      controller.connectToCastDevice(castService.device),
+      throwsStateError,
+    );
+
+    expect(controller.isCasting, isFalse);
+    expect(audioEngine.pauseCount, 1);
+    expect(audioEngine.resumeCount, 1);
+    expect(controller.playback.isPlaying, isTrue);
+    controller.dispose();
+  });
+
   test('controller clears recently played stations', () async {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
@@ -808,20 +956,28 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('shows offline badge when connectivity is down', (tester) async {
-    final controller = await RadioAppController.bootstrap(
-      repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
-      settingsStore: InMemorySettingsStore(),
-      audioEngine: FakeAudioEngine(),
-      connectivityService: FakeConnectivityService.offline(),
-    );
+  testWidgets(
+    'shows offline message on current station when connectivity is down',
+    (tester) async {
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.offline(),
+      );
 
-    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+      await tester.pumpAndSettle();
+      await controller.playStation(controller.discoverStations.first);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Offline'), findsOneWidget);
-  });
+      expect(find.text('Offline'), findsNothing);
+      expect(find.text('Internet connection lost'), findsOneWidget);
+
+      controller.dispose();
+    },
+  );
 
   test('playback progress clears a stale offline state', () async {
     final audioEngine = FakeAudioEngine();
@@ -1261,12 +1417,18 @@ class FakeAudioEngine implements AudioEngine {
 
   @override
   ValueListenable<PlaybackSnapshot> get snapshot => _snapshot;
+  int pauseCount = 0;
+  int resumeCount = 0;
+  int playStreamCount = 0;
+  final List<String> playedUrls = <String>[];
+  final Set<String> failingUrls = <String>{};
 
   @override
   Future<void> dispose() async {}
 
   @override
   Future<void> pause() async {
+    pauseCount += 1;
     _snapshot.value = const PlaybackSnapshot(status: PlaybackStatus.paused);
   }
 
@@ -1276,11 +1438,19 @@ class FakeAudioEngine implements AudioEngine {
     Map<String, String>? headers,
     PlaybackMediaMetadata? metadata,
   }) async {
-    _snapshot.value = const PlaybackSnapshot(status: PlaybackStatus.playing);
+    playStreamCount += 1;
+    playedUrls.add(url);
+    _snapshot.value = failingUrls.contains(url)
+        ? PlaybackSnapshot(
+            status: PlaybackStatus.error,
+            message: 'stream failed $playStreamCount',
+          )
+        : const PlaybackSnapshot(status: PlaybackStatus.playing);
   }
 
   @override
   Future<void> resume() async {
+    resumeCount += 1;
     _snapshot.value = const PlaybackSnapshot(status: PlaybackStatus.playing);
   }
 
@@ -1291,6 +1461,90 @@ class FakeAudioEngine implements AudioEngine {
 
   void emitSnapshot(PlaybackSnapshot snapshot) {
     _snapshot.value = snapshot;
+  }
+}
+
+class FakeCastService implements CastService {
+  final CastDevice device = const CastDevice(
+    id: 'living-room',
+    name: 'Living Room',
+    modelName: 'Chromecast',
+  );
+  final ValueNotifier<CastSnapshot> _snapshot = ValueNotifier<CastSnapshot>(
+    const CastSnapshot.unavailable(),
+  );
+  CastMedia? loadedMedia;
+  int pauseCount = 0;
+  int resumeCount = 0;
+  int stopCount = 0;
+  bool failLoading = false;
+
+  @override
+  ValueListenable<CastSnapshot> get snapshot => _snapshot;
+
+  @override
+  Future<void> initialize() async {
+    _snapshot.value = CastSnapshot(
+      connectionStatus: CastConnectionStatus.disconnected,
+      devices: <CastDevice>[device],
+    );
+  }
+
+  @override
+  Future<void> connect(CastDevice device) async {
+    _snapshot.value = CastSnapshot(
+      connectionStatus: CastConnectionStatus.connected,
+      deviceName: device.name,
+      devices: <CastDevice>[device],
+    );
+  }
+
+  @override
+  Future<void> disconnect() async {
+    _snapshot.value = CastSnapshot(
+      connectionStatus: CastConnectionStatus.disconnected,
+      devices: <CastDevice>[device],
+    );
+  }
+
+  @override
+  Future<void> load(CastMedia media) async {
+    if (failLoading) {
+      throw StateError('Cast load failed.');
+    }
+    loadedMedia = media;
+    _snapshot.value = CastSnapshot(
+      connectionStatus: CastConnectionStatus.connected,
+      playbackStatus: CastPlaybackStatus.playing,
+      deviceName: device.name,
+      devices: <CastDevice>[device],
+    );
+  }
+
+  @override
+  Future<void> pause() async {
+    pauseCount += 1;
+  }
+
+  @override
+  Future<void> resume() async {
+    resumeCount += 1;
+  }
+
+  @override
+  Future<void> stop() async {
+    stopCount += 1;
+  }
+
+  @override
+  Future<void> startDiscovery() async {}
+
+  @override
+  Future<void> stopDiscovery() async {}
+
+  @override
+  Future<void> dispose() async {
+    _snapshot.dispose();
   }
 }
 

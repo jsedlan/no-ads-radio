@@ -11,6 +11,7 @@ import 'src/audio/audio_engine.dart';
 import 'src/controllers/radio_app_controller.dart';
 import 'src/services/favorites_store.dart';
 import 'src/services/connectivity_service.dart';
+import 'src/services/cast_service.dart';
 import 'src/services/local_catalog_station_repository.dart';
 import 'src/services/local_stations_service.dart';
 import 'src/services/remote_json_station_repository.dart';
@@ -46,6 +47,7 @@ Future<void> main() async {
     favoritesStore: SharedPreferencesFavoritesStore(preferences),
     settingsStore: SharedPreferencesSettingsStore(preferences),
     audioEngine: JustAudioEngine(),
+    castService: GoogleCastService(),
     connectivityService: ReachabilityConnectivityService(),
     startupCountryCode: startupCountryCode,
     initialCatalogLoadEvents: localStations.loadEvents,

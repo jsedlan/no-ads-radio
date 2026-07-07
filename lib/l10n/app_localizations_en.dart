@@ -177,6 +177,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nextFavorite => 'Next favorite';
 
   @override
+  String get cast => 'Cast';
+
+  @override
+  String get castDevices => 'Cast devices';
+
+  @override
+  String castingTo(Object device) {
+    return 'Casting to $device';
+  }
+
+  @override
+  String get disconnect => 'Disconnect';
+
+  @override
+  String get searchingCastDevices => 'Searching for Cast devices...';
+
+  @override
+  String get noCastDevices =>
+      'No Cast devices found. Check that both devices are on the same Wi-Fi network.';
+
+  @override
+  String get iosCastPermissionHelp =>
+      'On iPhone, allow Local Network access in Settings > Privacy & Security > Local Network > NoAds Radio, then try again.';
+
+  @override
+  String get searchAgain => 'Search again';
+
+  @override
+  String get castConnectionFailed => 'Could not connect to the Cast device.';
+
+  @override
   String get track => 'Track';
 
   @override

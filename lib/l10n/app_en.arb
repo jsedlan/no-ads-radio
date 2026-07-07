@@ -68,6 +68,20 @@
   "pause": "Pause",
   "play": "Play",
   "nextFavorite": "Next favorite",
+  "cast": "Cast",
+  "castDevices": "Cast devices",
+  "castingTo": "Casting to {device}",
+  "@castingTo": {
+    "placeholders": {
+      "device": {}
+    }
+  },
+  "disconnect": "Disconnect",
+  "searchingCastDevices": "Searching for Cast devices...",
+  "noCastDevices": "No Cast devices found. Check that both devices are on the same Wi-Fi network.",
+  "iosCastPermissionHelp": "On iPhone, allow Local Network access in Settings > Privacy & Security > Local Network > NoAds Radio, then try again.",
+  "searchAgain": "Search again",
+  "castConnectionFailed": "Could not connect to the Cast device.",
   "track": "Track",
   "stream": "Stream",
   "genre": "Genre",

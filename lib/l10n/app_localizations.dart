@@ -393,6 +393,60 @@ abstract class AppLocalizations {
   /// **'Next favorite'**
   String get nextFavorite;
 
+  /// No description provided for @cast.
+  ///
+  /// In en, this message translates to:
+  /// **'Cast'**
+  String get cast;
+
+  /// No description provided for @castDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Cast devices'**
+  String get castDevices;
+
+  /// No description provided for @castingTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Casting to {device}'**
+  String castingTo(Object device);
+
+  /// No description provided for @disconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get disconnect;
+
+  /// No description provided for @searchingCastDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching for Cast devices...'**
+  String get searchingCastDevices;
+
+  /// No description provided for @noCastDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No Cast devices found. Check that both devices are on the same Wi-Fi network.'**
+  String get noCastDevices;
+
+  /// No description provided for @iosCastPermissionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'On iPhone, allow Local Network access in Settings > Privacy & Security > Local Network > NoAds Radio, then try again.'**
+  String get iosCastPermissionHelp;
+
+  /// No description provided for @searchAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Search again'**
+  String get searchAgain;
+
+  /// No description provided for @castConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to the Cast device.'**
+  String get castConnectionFailed;
+
   /// No description provided for @track.
   ///
   /// In en, this message translates to:

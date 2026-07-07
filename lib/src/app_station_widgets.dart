@@ -398,6 +398,8 @@ class _StationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isCurrent =
+        controller.currentStation?.identityKey == station.identityKey;
     final stationTitleStyle = GoogleFonts.notoSans(
       textStyle: theme.textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.w700,
@@ -406,17 +408,20 @@ class _StationTile extends StatelessWidget {
     final stationSubtitleStyle = GoogleFonts.notoSans(
       textStyle: theme.textTheme.bodyMedium,
     );
-    final isCurrent =
-        controller.currentStation?.identityKey == station.identityKey;
     final isFavorite = controller.isFavorite(station.identityKey);
 
     final tile = Card(
       margin: EdgeInsets.zero,
       color: isCurrent ? _selectedStationTileColor(context) : null,
+      shape: isCurrent
+          ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))
+          : null,
       child: ListTile(
-        onTap: () => controller.playStation(station),
+        onTap: isCurrent
+            ? () => _openNowPlayingScreen(context, controller)
+            : () => controller.playStation(station),
         contentPadding: const EdgeInsets.only(
-          left: 8,
+          left: 6,
           right: 0,
           top: 0,
           bottom: 0,
@@ -428,6 +433,17 @@ class _StationTile extends StatelessWidget {
         leading: controller.showStationIcon
             ? _StationArtwork(station: station)
             : null,
+        titleAlignment: ListTileTitleAlignment.center,
+        titleTextStyle: stationTitleStyle,
+        subtitleTextStyle: stationSubtitleStyle,
+        iconColor: theme.colorScheme.onSurface,
+        textColor: theme.colorScheme.onSurface,
+        selected: isCurrent,
+        selectedColor: theme.colorScheme.onSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isCurrent ? 6 : 28),
+        ),
+        selectedTileColor: Colors.transparent,
         title: Row(
           children: [
             Expanded(
@@ -443,13 +459,13 @@ class _StationTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
                   context.l10n.diaspora,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
+                    color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -458,25 +474,49 @@ class _StationTile extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          _stationSubtitle(station),
+          isCurrent && controller.isOffline
+              ? context.l10n.internetConnectionLost
+              : _stationSubtitle(station),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: stationSubtitleStyle,
+          style: isCurrent && controller.isOffline
+              ? stationSubtitleStyle.copyWith(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.w800,
+                )
+              : stationSubtitleStyle,
         ),
         dense: true,
         isThreeLine: false,
-        trailing: IconButton(
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-          visualDensity: VisualDensity.compact,
-          tooltip: isFavorite
-              ? context.l10n.removeFavorite
-              : context.l10n.saveFavorite,
-          onPressed: () => controller.toggleFavorite(station),
-          icon: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? const Color(0xFFFF8A5B) : null,
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isCurrent)
+              Tooltip(
+                message: context.l10n.nowPlaying,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Icon(
+                    Icons.graphic_eq_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              visualDensity: VisualDensity.compact,
+              tooltip: isFavorite
+                  ? context.l10n.removeFavorite
+                  : context.l10n.saveFavorite,
+              onPressed: () => controller.toggleFavorite(station),
+              icon: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? theme.colorScheme.onSurface : null,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -579,7 +619,7 @@ class _StationDragFeedback extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(Icons.favorite_rounded, color: Color(0xFFFF8A5B)),
+            Icon(Icons.favorite_rounded, color: theme.colorScheme.onSurface),
           ],
         ),
       ),
@@ -649,10 +689,7 @@ class _CountryOption {
 }
 
 Color _selectedStationTileColor(BuildContext context) {
-  final theme = Theme.of(context);
-  return theme.colorScheme.primaryContainer.withValues(
-    alpha: theme.brightness == Brightness.dark ? 0.32 : 0.42,
-  );
+  return Theme.of(context).colorScheme.secondaryContainer;
 }
 
 String _selectedCountriesSummary(
