@@ -82,6 +82,10 @@ class _DebugView extends StatelessWidget {
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 24),
+              _DuplicateStationsSection(
+                duplicates: controller.duplicateStations,
+              ),
+              const SizedBox(height: 24),
               Text(
                 context.l10n.stationLoadingLog,
                 style: Theme.of(
@@ -106,6 +110,119 @@ class _DebugView extends StatelessWidget {
       },
     );
   }
+}
+
+class _DuplicateStationsSection extends StatelessWidget {
+  const _DuplicateStationsSection({required this.duplicates});
+
+  final List<DuplicateStationInfo> duplicates;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.duplicateStations,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          context.l10n.duplicateStationCount(duplicates.length),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: _mutedTextColor(context),
+          ),
+        ),
+        if (duplicates.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...duplicates.map((duplicate) {
+            return _DuplicateStationRow(duplicate: duplicate);
+          }),
+        ],
+      ],
+    );
+  }
+}
+
+class _DuplicateStationRow extends StatelessWidget {
+  const _DuplicateStationRow({required this.duplicate});
+
+  final DuplicateStationInfo duplicate;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final reason = switch (duplicate.reason) {
+      DuplicateStationReason.stationUuid => context.l10n.duplicateStationByUuid,
+      DuplicateStationReason.nameLocation =>
+        context.l10n.duplicateStationByNameLocation,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.content_copy_rounded,
+              size: 18,
+              color: _mutedTextColor(context),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  duplicate.station.displayName,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _duplicateStationSubtitle(duplicate.station),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _mutedTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  reason,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  context.l10n.duplicateStationOriginal(
+                    duplicate.originalStation.displayName,
+                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _mutedTextColor(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _duplicateStationSubtitle(RadioStation station) {
+  final parts = <String>[
+    if (station.displayLocation.isNotEmpty) station.displayLocation,
+    if (station.bestStreamUrl.isNotEmpty) station.bestStreamUrl,
+  ];
+  return parts.join('  •  ');
 }
 
 class _CatalogLoadEventRow extends StatelessWidget {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:no_ads_radio/l10n/app_localizations.dart';
 
 import 'package:no_ads_radio/src/app.dart';
@@ -14,6 +15,7 @@ import 'package:no_ads_radio/src/services/catalog_station_repository.dart';
 import 'package:no_ads_radio/src/services/cast_service.dart';
 import 'package:no_ads_radio/src/services/fallback_station_repository.dart';
 import 'package:no_ads_radio/src/services/favorites_store.dart';
+import 'package:no_ads_radio/src/services/remote_json_station_repository.dart';
 import 'package:no_ads_radio/src/services/settings_store.dart';
 import 'package:no_ads_radio/src/services/station_catalog_json.dart';
 import 'package:no_ads_radio/src/services/station_catalog_diagnostics.dart';
@@ -375,6 +377,56 @@ void main() {
     expect(find.text('4 playable stations loaded'), findsOneWidget);
   });
 
+  testWidgets('debug view lists duplicate stations hidden from Stations', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: StaticCatalogStationRepository(<RadioStation>[
+        RadioStation.fromJson(<String, dynamic>{
+          'stationuuid': 'same-station-id',
+          'name': 'Original Station',
+          'url': 'https://example.com/original',
+          'url_resolved': 'https://example.com/original',
+          'country': 'Serbia',
+          'countrycode': 'RS',
+        }),
+        RadioStation.fromJson(<String, dynamic>{
+          'stationuuid': 'same-station-id',
+          'name': 'ZZ Duplicate Station',
+          'url': 'https://example.com/duplicate',
+          'url_resolved': 'https://example.com/duplicate',
+          'country': 'Serbia',
+          'countrycode': 'RS',
+        }),
+      ]),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Debug view').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Duplicate stations'), findsOneWidget);
+    expect(
+      find.text('1 duplicate station hidden from Stations'),
+      findsOneWidget,
+    );
+    expect(find.text('ZZ Duplicate Station'), findsOneWidget);
+    expect(find.text('Duplicate UUID'), findsOneWidget);
+    expect(find.text('Original: Original Station'), findsOneWidget);
+    expect(find.text('Station loading log'), findsOneWidget);
+
+    controller.dispose();
+  });
+
   test('station catalog object count includes unplayable sedlan objects', () {
     final objectCount = countStationCatalogJsonObjects('''
       {
@@ -471,6 +523,31 @@ void main() {
 
       expect(stations, hasLength(2));
       expect(stations.first.displayName, 'Test Station 1');
+    },
+  );
+
+  test(
+    'remote catalog fetch sends selected countries as query params',
+    () async {
+      final client = RecordingHttpClient(body: '[]');
+      final repository = RemoteJsonStationRepository(
+        catalogUrl: 'https://api.noadsradio.sedlan.com/stations',
+        client: client,
+      );
+
+      final response = await repository.fetchCatalog(
+        countryCodes: const <String>['rs', 'MK'],
+      );
+
+      expect(response.statusCode, 200);
+      expect(client.requests, hasLength(1));
+      expect(client.requests.single.url.scheme, 'https');
+      expect(client.requests.single.url.host, 'api.noadsradio.sedlan.com');
+      expect(client.requests.single.url.path, '/stations');
+      expect(client.requests.single.url.queryParametersAll['country'], <String>[
+        'rs',
+        'MK',
+      ]);
     },
   );
 
@@ -603,6 +680,37 @@ void main() {
 
     controller.dispose();
   });
+
+  test(
+    'multi-country discover does not count shared diaspora matches as duplicates',
+    () async {
+      final settingsStore = InMemorySettingsStore(
+        const AppSettings(countryCodes: <String>['RS', 'MK']),
+      );
+      final controller = await RadioAppController.bootstrap(
+        repository: StaticCatalogStationRepository(<RadioStation>[
+          RadioStation.fromJson(<String, dynamic>{
+            'stationuuid': 'diaspora-station',
+            'name': 'Diaspora Station',
+            'url': 'https://example.com/stream',
+            'url_resolved': 'https://example.com/stream',
+            'country': 'Dijaspora',
+            'countrycode': '',
+            'state': 'Germany',
+          }),
+        ]),
+        favoritesStore: InMemoryFavoritesStore(),
+        settingsStore: settingsStore,
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+      );
+
+      expect(controller.discoverStations, hasLength(1));
+      expect(controller.duplicateStations, isEmpty);
+
+      controller.dispose();
+    },
+  );
 
   test(
     'country setting changes reload discover stations immediately',
@@ -1342,6 +1450,23 @@ class StaticCatalogStationRepository extends CatalogStationRepository {
   @override
   Future<List<RadioStation>> loadCatalog() async {
     return stations;
+  }
+}
+
+class RecordingHttpClient extends http.BaseClient {
+  RecordingHttpClient({required this.body, this.statusCode = 200});
+
+  final String body;
+  final int statusCode;
+  final List<http.BaseRequest> requests = <http.BaseRequest>[];
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    requests.add(request);
+    return http.StreamedResponse(
+      http.ByteStream.fromBytes(body.codeUnits),
+      statusCode,
+    );
   }
 }
 

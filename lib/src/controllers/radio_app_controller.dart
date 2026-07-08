@@ -15,7 +15,31 @@ import '../services/station_repository.dart';
 
 enum PlaybackStallReason { internetOutage, streamFailure }
 
+enum DuplicateStationReason { stationUuid, nameLocation }
+
 enum RemoteStationCatalogStatus { notLoaded, loading, loaded, failed }
+
+class DuplicateStationInfo {
+  const DuplicateStationInfo({
+    required this.station,
+    required this.originalStation,
+    required this.reason,
+  });
+
+  final RadioStation station;
+  final RadioStation originalStation;
+  final DuplicateStationReason reason;
+}
+
+class _StationDeduplicationResult {
+  const _StationDeduplicationResult({
+    required this.stations,
+    required this.duplicates,
+  });
+
+  final List<RadioStation> stations;
+  final List<DuplicateStationInfo> duplicates;
+}
 
 class RemoteStationCatalogSnapshot {
   const RemoteStationCatalogSnapshot({
@@ -144,6 +168,7 @@ class RadioAppController extends ChangeNotifier {
   List<RadioStation> searchResults = const <RadioStation>[];
   List<RadioStation> manualStations = const <RadioStation>[];
   List<RadioStation> recentlyPlayedStations = const <RadioStation>[];
+  List<DuplicateStationInfo> duplicateStations = const <DuplicateStationInfo>[];
   int loadedStationCount = 0;
   final List<StationCatalogLoadEvent> catalogLoadEvents;
   StationCatalogSource? activeCatalogSource;
@@ -290,6 +315,7 @@ class RadioAppController extends ChangeNotifier {
     } catch (error) {
       discoverError = _errorMessage(error);
       discoverStations = const <RadioStation>[];
+      duplicateStations = const <DuplicateStationInfo>[];
       loadedStationCount = 0;
     } finally {
       isRefreshingDiscover = false;
@@ -297,11 +323,20 @@ class RadioAppController extends ChangeNotifier {
     }
   }
 
-  void markRemoteStationCatalogLoading() {
+  void markRemoteStationCatalogLoading({
+    List<String> countryCodes = const <String>[],
+  }) {
+    final normalizedCountryCodes = countryCodes
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    final query = normalizedCountryCodes.isEmpty
+        ? ''
+        : '?${normalizedCountryCodes.map((code) => 'country=$code').join('&')}';
     _recordCatalogLoadEvent(
       source: StationCatalogSource.sedlanGet,
       status: StationCatalogEventStatus.loading,
-      message: 'GET https://api.noadsradio.sedlan.com/stations started.',
+      message: 'GET https://api.noadsradio.sedlan.com/stations$query started.',
     );
     remoteStationCatalog = const RemoteStationCatalogSnapshot(
       status: RemoteStationCatalogStatus.loading,
@@ -380,22 +415,27 @@ class RadioAppController extends ChangeNotifier {
           limit: 5000,
         ),
       );
-      return _deduplicateStations(stations);
+      return _deduplicateDiscoverStations(stations);
     }
 
-    final merged = <RadioStation>[];
+    final repository = _repository;
+    if (repository is CountryStationRepository) {
+      stations.addAll(
+        await (repository as CountryStationRepository)
+            .searchStationsForCountries(countryCodes, limit: 5000),
+      );
+      return _deduplicateDiscoverStations(stations);
+    }
 
     for (final countryCode in countryCodes) {
-      final stations = await _repository.searchStations(
-        StationSearchQuery(countryCode: countryCode),
-        limit: 5000,
+      stations.addAll(
+        await _repository.searchStations(
+          StationSearchQuery(countryCode: countryCode),
+          limit: 5000,
+        ),
       );
-
-      merged.addAll(stations);
     }
-
-    stations.addAll(merged);
-    return _deduplicateStations(stations);
+    return _deduplicateDiscoverStations(stations);
   }
 
   Future<int?> _catalogStationCount() async {
@@ -406,10 +446,23 @@ class RadioAppController extends ChangeNotifier {
     return null;
   }
 
-  List<RadioStation> _deduplicateStations(List<RadioStation> stations) {
+  List<RadioStation> _deduplicateDiscoverStations(List<RadioStation> stations) {
+    final result = _deduplicateStations(stations);
+    duplicateStations = List<DuplicateStationInfo>.unmodifiable(
+      result.duplicates,
+    );
+    return result.stations;
+  }
+
+  _StationDeduplicationResult _deduplicateStations(
+    List<RadioStation> stations,
+  ) {
     final seenIds = <String>{};
+    final stationsById = <String, RadioStation>{};
     final seenNameLocations = <String>{};
+    final stationsByNameLocation = <String, RadioStation>{};
     final result = <RadioStation>[];
+    final duplicates = <DuplicateStationInfo>[];
 
     for (final station in stations) {
       final stationId = station.stationUuid.trim();
@@ -417,19 +470,38 @@ class RadioAppController extends ChangeNotifier {
           '${station.displayName.toLowerCase()}|'
           '${station.displayLocation.toLowerCase()}';
       if (stationId.isNotEmpty && seenIds.contains(stationId)) {
+        duplicates.add(
+          DuplicateStationInfo(
+            station: station,
+            originalStation: stationsById[stationId]!,
+            reason: DuplicateStationReason.stationUuid,
+          ),
+        );
         continue;
       }
       if (seenNameLocations.contains(stationNameLocation)) {
+        duplicates.add(
+          DuplicateStationInfo(
+            station: station,
+            originalStation: stationsByNameLocation[stationNameLocation]!,
+            reason: DuplicateStationReason.nameLocation,
+          ),
+        );
         continue;
       }
       if (stationId.isNotEmpty) {
         seenIds.add(stationId);
+        stationsById[stationId] = station;
       }
       seenNameLocations.add(stationNameLocation);
+      stationsByNameLocation[stationNameLocation] = station;
       result.add(station);
     }
 
-    return List<RadioStation>.unmodifiable(result);
+    return _StationDeduplicationResult(
+      stations: List<RadioStation>.unmodifiable(result),
+      duplicates: List<DuplicateStationInfo>.unmodifiable(duplicates),
+    );
   }
 
   bool _sameStringValues(List<String> first, List<String> second) {

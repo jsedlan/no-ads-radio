@@ -415,6 +415,33 @@ class AppLocalizationsSr extends AppLocalizations {
       'Nema zabeleženih događaja učitavanja stanica.';
 
   @override
+  String get duplicateStations => 'Duplirane stanice';
+
+  @override
+  String duplicateStationCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sakriveno je $count dupliranih stanica iz kartice Stanice',
+      few: 'Sakrivene su $count duplirane stanice iz kartice Stanice',
+      one: 'Sakrivena je $count duplirana stanica iz kartice Stanice',
+      zero: 'Nema sakrivenih dupliranih stanica',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicateStationByUuid => 'Duplirani UUID';
+
+  @override
+  String get duplicateStationByNameLocation => 'Duplirani naziv i lokacija';
+
+  @override
+  String duplicateStationOriginal(Object station) {
+    return 'Original: $station';
+  }
+
+  @override
   String playableStationCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -848,6 +875,33 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   @override
   String get noStationLoadingEvents =>
       'Nema zabeleženih događaja učitavanja stanica.';
+
+  @override
+  String get duplicateStations => 'Duplirane stanice';
+
+  @override
+  String duplicateStationCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sakriveno je $count dupliranih stanica iz kartice Stanice',
+      few: 'Sakrivene su $count duplirane stanice iz kartice Stanice',
+      one: 'Sakrivena je $count duplirana stanica iz kartice Stanice',
+      zero: 'Nema sakrivenih dupliranih stanica',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicateStationByUuid => 'Duplirani UUID';
+
+  @override
+  String get duplicateStationByNameLocation => 'Duplirani naziv i lokacija';
+
+  @override
+  String duplicateStationOriginal(Object station) {
+    return 'Original: $station';
+  }
 
   @override
   String playableStationCount(int count) {

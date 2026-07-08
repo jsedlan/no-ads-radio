@@ -406,6 +406,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noStationLoadingEvents => 'No station loading events recorded.';
 
   @override
+  String get duplicateStations => 'Duplicate stations';
+
+  @override
+  String duplicateStationCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count duplicate stations hidden from Stations',
+      one: '1 duplicate station hidden from Stations',
+      zero: 'No duplicate stations hidden',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get duplicateStationByUuid => 'Duplicate UUID';
+
+  @override
+  String get duplicateStationByNameLocation => 'Duplicate name and location';
+
+  @override
+  String duplicateStationOriginal(Object station) {
+    return 'Original: $station';
+  }
+
+  @override
   String playableStationCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

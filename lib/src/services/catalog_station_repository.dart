@@ -3,7 +3,10 @@ import '../models/search_query.dart';
 import 'station_repository.dart';
 
 abstract class CatalogStationRepository
-    implements StationRepository, StationCatalogMetrics {
+    implements
+        StationRepository,
+        CountryStationRepository,
+        StationCatalogMetrics {
   Future<List<RadioStation>> loadCatalog();
 
   @override
@@ -83,6 +86,85 @@ abstract class CatalogStationRepository
     });
 
     return filtered.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<RadioStation>> searchStationsForCountries(
+    List<String> countryCodes, {
+    int limit = 30,
+  }) async {
+    final normalizedCountryCodes = countryCodes
+        .map((value) => value.trim().toUpperCase())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    if (normalizedCountryCodes.isEmpty) {
+      return searchStations(const StationSearchQuery(), limit: limit);
+    }
+
+    final stations = await loadCatalog();
+    final stationsByCountry = <String, List<RadioStation>>{};
+    final diasporaStations = <RadioStation>[];
+
+    for (final station in stations) {
+      if (station.bestStreamUrl.isEmpty) {
+        continue;
+      }
+      if (station.isDiaspora) {
+        diasporaStations.add(station);
+        continue;
+      }
+
+      final stationCountryCode = station.countryCode.trim().toUpperCase();
+      if (!normalizedCountryCodes.contains(stationCountryCode)) {
+        continue;
+      }
+      stationsByCountry
+          .putIfAbsent(stationCountryCode, () => <RadioStation>[])
+          .add(station);
+    }
+
+    final orderedStations = <RadioStation>[];
+    for (final countryCode in normalizedCountryCodes) {
+      final countryStations = stationsByCountry[countryCode];
+      if (countryStations == null) {
+        continue;
+      }
+      countryStations.sort((a, b) {
+        final primary = _orderSearchResults(
+          a,
+          b,
+          StationOrdering.clickCount.apiValue,
+        );
+        if (primary != 0) {
+          return primary;
+        }
+        return a.displayName.toLowerCase().compareTo(
+          b.displayName.toLowerCase(),
+        );
+      });
+      orderedStations.addAll(countryStations);
+    }
+
+    if (normalizedCountryCodes.any(
+      RadioStation.diasporaCountryCodes.contains,
+    )) {
+      diasporaStations.sort((a, b) {
+        final primary = _orderSearchResults(
+          a,
+          b,
+          StationOrdering.clickCount.apiValue,
+        );
+        if (primary != 0) {
+          return primary;
+        }
+        return a.displayName.toLowerCase().compareTo(
+          b.displayName.toLowerCase(),
+        );
+      });
+      orderedStations.addAll(diasporaStations);
+    }
+
+    return orderedStations.take(limit).toList(growable: false);
   }
 
   @override

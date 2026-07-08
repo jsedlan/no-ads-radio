@@ -12,6 +12,13 @@ abstract class StationRepository {
   Future<String> resolveStreamUrl(String stationUuid);
 }
 
+abstract interface class CountryStationRepository {
+  Future<List<RadioStation>> searchStationsForCountries(
+    List<String> countryCodes, {
+    int limit = 30,
+  });
+}
+
 abstract interface class StationCatalogMetrics {
   Future<int> countStations();
 }

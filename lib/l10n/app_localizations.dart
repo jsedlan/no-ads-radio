@@ -789,6 +789,36 @@ abstract class AppLocalizations {
   /// **'No station loading events recorded.'**
   String get noStationLoadingEvents;
 
+  /// No description provided for @duplicateStations.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate stations'**
+  String get duplicateStations;
+
+  /// No description provided for @duplicateStationCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No duplicate stations hidden} =1{1 duplicate station hidden from Stations} other{{count} duplicate stations hidden from Stations}}'**
+  String duplicateStationCount(int count);
+
+  /// No description provided for @duplicateStationByUuid.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate UUID'**
+  String get duplicateStationByUuid;
+
+  /// No description provided for @duplicateStationByNameLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate name and location'**
+  String get duplicateStationByNameLocation;
+
+  /// No description provided for @duplicateStationOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Original: {station}'**
+  String duplicateStationOriginal(Object station);
+
   /// No description provided for @playableStationCount.
   ///
   /// In en, this message translates to:

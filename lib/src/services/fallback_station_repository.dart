@@ -2,7 +2,8 @@ import '../models/radio_station.dart';
 import '../models/search_query.dart';
 import 'station_repository.dart';
 
-class FallbackStationRepository implements StationRepository {
+class FallbackStationRepository
+    implements StationRepository, CountryStationRepository {
   FallbackStationRepository(this._repositories);
 
   final List<StationRepository> _repositories;
@@ -55,6 +56,30 @@ class FallbackStationRepository implements StationRepository {
     return _firstListResult(
       (repository) => repository.searchStations(query, limit: limit),
     );
+  }
+
+  @override
+  Future<List<RadioStation>> searchStationsForCountries(
+    List<String> countryCodes, {
+    int limit = 30,
+  }) {
+    return _firstListResult((repository) async {
+      if (repository is CountryStationRepository) {
+        return (repository as CountryStationRepository)
+            .searchStationsForCountries(countryCodes, limit: limit);
+      }
+
+      final stations = <RadioStation>[];
+      for (final countryCode in countryCodes) {
+        stations.addAll(
+          await repository.searchStations(
+            StationSearchQuery(countryCode: countryCode),
+            limit: limit,
+          ),
+        );
+      }
+      return stations;
+    });
   }
 
   Future<List<RadioStation>> _firstListResult(

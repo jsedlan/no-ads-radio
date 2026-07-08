@@ -36,9 +36,12 @@ class RemoteJsonStationRepository extends CatalogStationRepository {
     return _cachedStations!;
   }
 
-  Future<RemoteStationCatalogResponse> fetchCatalog() async {
+  Future<RemoteStationCatalogResponse> fetchCatalog({
+    List<String> countryCodes = const <String>[],
+  }) async {
+    final uri = _catalogUriForCountries(countryCodes);
     final response = await _client.get(
-      _catalogUri,
+      uri,
       headers: const <String, String>{
         'User-Agent': userAgent,
         'Accept': 'application/json',
@@ -54,6 +57,23 @@ class RemoteJsonStationRepository extends CatalogStationRepository {
     return RemoteStationCatalogResponse(
       body: response.body,
       statusCode: response.statusCode,
+    );
+  }
+
+  Uri _catalogUriForCountries(List<String> countryCodes) {
+    final countries = countryCodes
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false);
+    if (countries.isEmpty) {
+      return _catalogUri;
+    }
+
+    return _catalogUri.replace(
+      queryParameters: <String, dynamic>{
+        ..._catalogUri.queryParameters,
+        'country': countries,
+      },
     );
   }
 }

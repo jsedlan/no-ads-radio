@@ -55,12 +55,60 @@ Future<void> main() async {
   );
 
   runApp(NoAdsRadioApp(controller: controller));
-  unawaited(
-    _refreshStationCatalog(
-      remoteStations: remoteStations,
-      localStations: localStations,
-      controller: controller,
-    ),
+  _RemoteCatalogRefreshCoordinator(
+    remoteStations: remoteStations,
+    localStations: localStations,
+    controller: controller,
+  ).start();
+}
+
+class _RemoteCatalogRefreshCoordinator {
+  _RemoteCatalogRefreshCoordinator({
+    required this.remoteStations,
+    required this.localStations,
+    required this.controller,
+  });
+
+  final RemoteJsonStationRepository remoteStations;
+  final LocalStationsService localStations;
+  final RadioAppController controller;
+
+  List<String>? _lastCountryCodes;
+  bool _isRefreshing = false;
+
+  void start() {
+    controller.addListener(_refreshWhenCountryCodesChange);
+    _refreshWhenCountryCodesChange();
+  }
+
+  void _refreshWhenCountryCodesChange() {
+    final countryCodes = _normalizedCountryCodes(controller.countryCodes);
+    if (_sameStringValues(_lastCountryCodes, countryCodes) || _isRefreshing) {
+      return;
+    }
+
+    _lastCountryCodes = countryCodes;
+    _isRefreshing = true;
+    unawaited(
+      _refreshStationCatalog(
+        remoteStations: remoteStations,
+        localStations: localStations,
+        controller: controller,
+        countryCodes: countryCodes,
+      ).whenComplete(() {
+        _isRefreshing = false;
+        _refreshWhenCountryCodesChange();
+      }),
+    );
+  }
+}
+
+List<String> _normalizedCountryCodes(List<String> countryCodes) {
+  return List<String>.unmodifiable(
+    countryCodes
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList(growable: false),
   );
 }
 
@@ -68,10 +116,13 @@ Future<void> _refreshStationCatalog({
   required RemoteJsonStationRepository remoteStations,
   required LocalStationsService localStations,
   required RadioAppController controller,
+  required List<String> countryCodes,
 }) async {
-  controller.markRemoteStationCatalogLoading();
+  controller.markRemoteStationCatalogLoading(countryCodes: countryCodes);
   try {
-    final response = await remoteStations.fetchCatalog();
+    final response = await remoteStations.fetchCatalog(
+      countryCodes: countryCodes,
+    );
     controller.markRemoteStationCatalogResponse(
       statusCode: response.statusCode,
     );
@@ -87,6 +138,18 @@ Future<void> _refreshStationCatalog({
     controller.markRemoteStationCatalogFailed(error);
     // Keep using the cached or bundled station list.
   }
+}
+
+bool _sameStringValues(List<String>? first, List<String> second) {
+  if (first == null || first.length != second.length) {
+    return false;
+  }
+  for (var index = 0; index < first.length; index += 1) {
+    if (first[index] != second[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 Future<void> _deleteOversizedLegacyCatalogPreferences() async {
