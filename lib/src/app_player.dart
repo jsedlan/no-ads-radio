@@ -814,7 +814,9 @@ class _PlayerBarText extends StatelessWidget {
             stationName: station.displayName,
           )
         : null;
-    final displayStatus = hasInternetOutage ? context.l10n.offline : status;
+    final displayStatus = hasInternetOutage
+        ? context.l10n.offline
+        : status ?? station.displayName;
     final parts = <String>[
       ?displayStatus,
       if (metadata != null && metadata.isNotEmpty) metadata,

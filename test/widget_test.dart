@@ -246,6 +246,33 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('bottom player falls back to station name without metadata', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    controller.selectTab(1);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Test Station 1'), findsNothing);
+
+    await controller.playStation(controller.discoverStations.first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Test Station 1'), findsOneWidget);
+
+    controller.dispose();
+  });
+
   testWidgets('tapping current station opens now playing', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
