@@ -23,16 +23,28 @@ import 'package:no_ads_radio/src/services/station_repository.dart';
 
 void main() {
   test('Serbian station counts use one, few, and other plural forms', () async {
-    final localizations = await AppLocalizations.delegate.load(
+    final latinLocalizations = await AppLocalizations.delegate.load(
       const Locale.fromSubtags(languageCode: 'sr', scriptCode: 'Latn'),
     );
+    final cyrillicLocalizations = await AppLocalizations.delegate.load(
+      const Locale('sr'),
+    );
 
-    expect(localizations.stationCount(0), 'Nema stanica');
-    expect(localizations.stationCount(1), '1 stanica');
-    expect(localizations.stationCount(2), '2 stanice');
-    expect(localizations.stationCount(5), '5 stanica');
-    expect(localizations.stationCount(21), '21 stanica');
-    expect(localizations.filteredStationCount(22), '22 filtrirane stanice');
+    expect(latinLocalizations.stationCount(0), 'Nema stanica');
+    expect(latinLocalizations.stationCount(1), '1 stanica');
+    expect(latinLocalizations.stationCount(2), '2 stanice');
+    expect(latinLocalizations.stationCount(5), '5 stanica');
+    expect(latinLocalizations.stationCount(21), '21 stanica');
+    expect(
+      latinLocalizations.filteredStationCount(22),
+      '22 filtrirane stanice',
+    );
+    expect(cyrillicLocalizations.stationCount(0), 'Нема станица');
+    expect(cyrillicLocalizations.stationCount(2), '2 станице');
+    expect(
+      cyrillicLocalizations.filteredStationCount(22),
+      '22 филтриране станице',
+    );
   });
 
   testWidgets('first run confirms locale country before saving it', (
@@ -118,6 +130,30 @@ void main() {
     expect(find.text('Show station icon'), findsOneWidget);
   });
 
+  testWidgets('overflow menu opens about page', (tester) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('About'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('About'), findsOneWidget);
+    expect(find.text('Version 1.0.0+1'), findsOneWidget);
+    expect(find.text('No ad clutter'), findsOneWidget);
+
+    controller.dispose();
+  });
+
   testWidgets('language preference switches the app to Serbian Latin', (
     tester,
   ) async {
@@ -160,6 +196,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Slušate'), findsOneWidget);
+
+    controller.dispose();
+  });
+
+  testWidgets('language preference switches the app to Serbian Cyrillic', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    final settingsStore = InMemorySettingsStore();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('System default'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Serbian (Cyrillic)').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Језик'), findsOneWidget);
+    expect(find.text('Тема'), findsOneWidget);
+    expect(
+      controller.languagePreference,
+      AppLanguagePreference.serbianCyrillic,
+    );
+    expect(
+      settingsStore.settings.languagePreference,
+      AppLanguagePreference.serbianCyrillic,
+    );
 
     controller.dispose();
   });
@@ -210,6 +292,48 @@ void main() {
     expect(controller.favoriteCategories[1].name, 'Rock');
 
     controller.dispose();
+  });
+
+  testWidgets('station subtitles follow selected Serbian scripts', (
+    tester,
+  ) async {
+    final latinController = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(
+        const AppSettings(
+          languagePreference: AppLanguagePreference.serbianLatin,
+        ),
+      ),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: latinController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Srbija • test • rok'), findsWidgets);
+
+    latinController.dispose();
+
+    final cyrillicController = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(
+        const AppSettings(
+          languagePreference: AppLanguagePreference.serbianCyrillic,
+        ),
+      ),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: cyrillicController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Србија • test • рок'), findsWidgets);
+
+    cyrillicController.dispose();
   });
 
   testWidgets('bottom player opens now playing only while active', (

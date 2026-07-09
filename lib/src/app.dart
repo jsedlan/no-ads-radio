@@ -18,9 +18,11 @@ part 'app_categories_page.dart';
 part 'app_countries_page.dart';
 part 'app_debug_view.dart';
 part 'app_home.dart';
+part 'app_about_page.dart';
 part 'app_manual_stations_page.dart';
 part 'app_player.dart';
 part 'app_settings_pages.dart';
+part 'app_station_tag_translations.dart';
 part 'app_setup.dart';
 part 'app_station_widgets.dart';
 
@@ -54,6 +56,7 @@ Locale? _appLocale(AppLanguagePreference preference) {
   return switch (preference) {
     AppLanguagePreference.system => null,
     AppLanguagePreference.english => const Locale('en'),
+    AppLanguagePreference.serbianCyrillic => const Locale('sr'),
     AppLanguagePreference.serbianLatin => const Locale.fromSubtags(
       languageCode: 'sr',
       scriptCode: 'Latn',

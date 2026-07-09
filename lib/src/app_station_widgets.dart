@@ -296,7 +296,7 @@ class _StationTile extends StatelessWidget {
         subtitle: Text(
           isCurrent && controller.isOffline
               ? context.l10n.internetConnectionLost
-              : _stationSubtitle(station),
+              : _stationSubtitle(context, station),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: isCurrent && controller.isOffline
@@ -374,20 +374,95 @@ class _StationTile extends StatelessWidget {
   }
 }
 
-String _stationSubtitle(RadioStation station) {
-  final country = station.isDiaspora
-      ? station.state.trim()
-      : station.country.trim().isNotEmpty
-      ? station.country.trim()
-      : station.countryCode.trim();
+String _stationSubtitle(BuildContext context, RadioStation station) {
+  final country = _localizedStationCountry(context, station);
   return [
     country,
     ...station.displayTags
         .split(' • ')
-        .map((tag) => tag.trim())
+        .map((tag) => _localizedStationLabel(context, tag))
         .where((tag) => tag.isNotEmpty),
   ].where((value) => value.trim().isNotEmpty).join(' • ');
 }
+
+String _localizedStationCountry(BuildContext context, RadioStation station) {
+  final rawCountry = station.isDiaspora
+      ? station.state.trim()
+      : station.country.trim();
+  final code = station.countryCode.trim().toUpperCase();
+  final localizedByCode = _localizedCountryByCode(context, code);
+  if (localizedByCode != null) {
+    return localizedByCode;
+  }
+  return _localizedStationLabel(
+    context,
+    rawCountry.isNotEmpty ? rawCountry : code,
+  );
+}
+
+String? _localizedCountryByCode(BuildContext context, String code) {
+  if (code.isEmpty) {
+    return null;
+  }
+  final language = Localizations.localeOf(context).languageCode;
+  final script = Localizations.localeOf(context).scriptCode;
+  final names = switch (language) {
+    'sr' when script == 'Latn' => _serbianLatinCountryNames,
+    'sr' => _serbianCyrillicCountryNames,
+    _ => _englishCountryNames,
+  };
+  return names[code];
+}
+
+String _localizedStationLabel(BuildContext context, String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  final key = _stationLabelKey(trimmed);
+  return _localizedStationTagLabels(context.l10n)[key] ?? trimmed;
+}
+
+String _stationLabelKey(String value) {
+  return value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[\s_/-]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ');
+}
+
+const Map<String, String> _englishCountryNames = <String, String>{
+  'BA': 'Bosnia and Herzegovina',
+  'DE': 'Germany',
+  'HR': 'Croatia',
+  'ME': 'Montenegro',
+  'MK': 'North Macedonia',
+  'RS': 'Serbia',
+  'SI': 'Slovenia',
+  'US': 'United States',
+};
+
+const Map<String, String> _serbianLatinCountryNames = <String, String>{
+  'BA': 'Bosna i Hercegovina',
+  'DE': 'Nemačka',
+  'HR': 'Hrvatska',
+  'ME': 'Crna Gora',
+  'MK': 'Severna Makedonija',
+  'RS': 'Srbija',
+  'SI': 'Slovenija',
+  'US': 'Sjedinjene Američke Države',
+};
+
+const Map<String, String> _serbianCyrillicCountryNames = <String, String>{
+  'BA': 'Босна и Херцеговина',
+  'DE': 'Немачка',
+  'HR': 'Хрватска',
+  'ME': 'Црна Гора',
+  'MK': 'Северна Македонија',
+  'RS': 'Србија',
+  'SI': 'Словенија',
+  'US': 'Сједињене Америчке Државе',
+};
 
 class _StationDragFeedback extends StatelessWidget {
   const _StationDragFeedback({required this.station, required this.controller});

@@ -92,19 +92,36 @@ class _SettingsViewState extends State<_SettingsView>
                     const SizedBox(height: 12),
                     DropdownButtonFormField<AppLanguagePreference>(
                       initialValue: controller.languagePreference,
+                      isExpanded: true,
                       decoration: const InputDecoration(),
                       items: [
                         DropdownMenuItem<AppLanguagePreference>(
                           value: AppLanguagePreference.system,
-                          child: Text(context.l10n.systemDefault),
+                          child: Text(
+                            context.l10n.systemDefault,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem<AppLanguagePreference>(
                           value: AppLanguagePreference.english,
-                          child: Text(context.l10n.english),
+                          child: Text(
+                            context.l10n.english,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        DropdownMenuItem<AppLanguagePreference>(
+                          value: AppLanguagePreference.serbianCyrillic,
+                          child: Text(
+                            context.l10n.serbianCyrillic,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         DropdownMenuItem<AppLanguagePreference>(
                           value: AppLanguagePreference.serbianLatin,
-                          child: Text(context.l10n.serbianLatin),
+                          child: Text(
+                            context.l10n.serbianLatin,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                       onChanged: (value) {

@@ -435,6 +435,12 @@ class _HeaderState extends State<_Header> {
                         color: theme.cardTheme.color,
                         onSelected: (value) {
                           switch (value) {
+                            case _HeaderAction.about:
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (context) => const _AboutPage(),
+                                ),
+                              );
                             case _HeaderAction.settings:
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -455,6 +461,10 @@ class _HeaderState extends State<_Header> {
                           PopupMenuItem<_HeaderAction>(
                             value: _HeaderAction.debugView,
                             child: Text(context.l10n.debugView),
+                          ),
+                          PopupMenuItem<_HeaderAction>(
+                            value: _HeaderAction.about,
+                            child: Text(context.l10n.about),
                           ),
                           PopupMenuItem<_HeaderAction>(
                             value: _HeaderAction.settings,
@@ -486,7 +496,7 @@ class _HeaderState extends State<_Header> {
   }
 }
 
-enum _HeaderAction { settings, debugView }
+enum _HeaderAction { about, settings, debugView }
 
 class _DiscoverTab extends StatelessWidget {
   const _DiscoverTab({

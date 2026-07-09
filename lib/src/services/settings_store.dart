@@ -18,11 +18,13 @@ enum AppThemePreference {
 enum AppLanguagePreference {
   system,
   english,
+  serbianCyrillic,
   serbianLatin;
 
   static AppLanguagePreference fromStorage(String? value) {
     return switch (value) {
       'english' => AppLanguagePreference.english,
+      'serbianCyrillic' => AppLanguagePreference.serbianCyrillic,
       'serbianLatin' => AppLanguagePreference.serbianLatin,
       _ => AppLanguagePreference.system,
     };
