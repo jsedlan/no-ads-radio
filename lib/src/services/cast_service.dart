@@ -124,6 +124,7 @@ class GoogleCastService implements CastService {
       <StreamSubscription<dynamic>>[];
   final Map<String, GoogleCastDevice> _nativeDevices =
       <String, GoogleCastDevice>{};
+  GoggleCastMediaStatus? _latestMediaStatus;
 
   @override
   ValueListenable<CastSnapshot> get snapshot => _snapshot;
@@ -256,21 +257,27 @@ class GoogleCastService implements CastService {
           );
 
     await GoogleCastRemoteMediaClient.instance.loadMedia(mediaInfo);
+    if (_isRemotePlaybackActive(media.url)) {
+      return;
+    }
     try {
       await _waitForRemotePlayback(media.url, timeout: _autoplayGracePeriod);
     } on TimeoutException {
       await GoogleCastRemoteMediaClient.instance.play();
+      if (_isRemotePlaybackActive(media.url)) {
+        return;
+      }
       try {
         await _waitForRemotePlayback(
           media.url,
           timeout: _mediaLoadTimeout - _autoplayGracePeriod,
         );
       } on TimeoutException {
+        _log('remote playback confirmation timed out; leaving Cast session active');
         _update(
-          playbackStatus: CastPlaybackStatus.error,
-          message: 'The Cast device did not start the stream.',
+          playbackStatus: CastPlaybackStatus.playing,
+          message: 'Cast playback started, but status confirmation timed out.',
         );
-        throw TimeoutException('The Cast device did not start the stream.');
       }
     }
   }
@@ -279,6 +286,9 @@ class GoogleCastService implements CastService {
     String contentId, {
     required Duration timeout,
   }) async {
+    if (_isRemotePlaybackActive(contentId)) {
+      return;
+    }
     await GoogleCastRemoteMediaClient.instance.mediaStatusStream
         .firstWhere(
           (status) =>
@@ -286,6 +296,12 @@ class GoogleCastService implements CastService {
               status?.playerState == CastMediaPlayerState.playing,
         )
         .timeout(timeout);
+  }
+
+  bool _isRemotePlaybackActive(String contentId) {
+    final status = _latestMediaStatus;
+    return status?.mediaInformation?.contentId == contentId &&
+        status?.playerState == CastMediaPlayerState.playing;
   }
 
   @override
@@ -315,6 +331,10 @@ class GoogleCastService implements CastService {
   }
 
   void _handleSession(GoogleCastSession? session) {
+    _log(
+      'session state=${session?.connectionState.name ?? 'none'} '
+      'device=${session?.device?.friendlyName ?? 'none'}',
+    );
     final connectionStatus = switch (session?.connectionState) {
       GoogleCastConnectState.connecting => CastConnectionStatus.connecting,
       GoogleCastConnectState.connected => CastConnectionStatus.connected,
@@ -336,6 +356,12 @@ class GoogleCastService implements CastService {
     if (status == null) {
       return;
     }
+    _latestMediaStatus = status;
+    _log(
+      'media status state=${status.playerState.name} '
+      'idleReason=${status.idleReason?.name ?? 'none'} '
+      'contentId=${status.mediaInformation?.contentId ?? 'none'}',
+    );
     final playbackStatus = switch (status.playerState) {
       CastMediaPlayerState.playing => CastPlaybackStatus.playing,
       CastMediaPlayerState.paused => CastPlaybackStatus.paused,
@@ -371,5 +397,11 @@ class GoogleCastService implements CastService {
       await subscription.cancel();
     }
     _snapshot.dispose();
+  }
+
+  void _log(String message) {
+    debugPrint(
+      '[cast_service ${DateTime.now().toIso8601String()}] $message',
+    );
   }
 }

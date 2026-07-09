@@ -818,7 +818,7 @@ class _PlayerBarText extends StatelessWidget {
         ? context.l10n.offline
         : status ?? station.displayName;
     final parts = <String>[
-      ?displayStatus,
+      displayStatus,
       if (metadata != null && metadata.isNotEmpty) metadata,
       if (sleepTimerRemaining > Duration.zero)
         context.l10n.sleepTimerWithRemaining(
