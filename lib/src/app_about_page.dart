@@ -42,17 +42,13 @@ class _AboutPage extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primaryContainer,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Icon(
-                                  Icons.radio_rounded,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                  size: 32,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  'assets/images/icon.png',
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                               const SizedBox(width: 16),
