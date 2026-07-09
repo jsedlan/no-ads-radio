@@ -39,43 +39,25 @@ class _AboutPage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.asset(
-                                  'assets/images/icon.png',
-                                  width: 56,
-                                  height: 56,
-                                  fit: BoxFit.cover,
-                                ),
+                          Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 320),
+                              child: Image.asset(
+                                'assets/images/logo.png',
+                                semanticLabel: context.l10n.appTitle,
+                                fit: BoxFit.contain,
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      context.l10n.appTitle,
-                                      style: theme.textTheme.headlineSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      context.l10n.appVersion(appVersion),
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            color: _mutedTextColor(context),
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                  ],
-                                ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: Text(
+                              context.l10n.appVersion(appVersion),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: _mutedTextColor(context),
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
+                            ),
                           ),
                           const SizedBox(height: 24),
                           Text(
