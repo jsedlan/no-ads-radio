@@ -148,7 +148,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('About'), findsOneWidget);
-    expect(find.text('Version 1.0.0+2'), findsOneWidget);
+    expect(find.text('Version $appVersion'), findsOneWidget);
     expect(find.text('No ad clutter'), findsOneWidget);
 
     controller.dispose();
@@ -487,97 +487,6 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('debug view shows active catalog source and loading log', (
-    tester,
-  ) async {
-    final loadedAt = DateTime(2026, 6, 8, 12, 30);
-    final controller = await RadioAppController.bootstrap(
-      repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
-      settingsStore: InMemorySettingsStore(),
-      audioEngine: FakeAudioEngine(),
-      connectivityService: FakeConnectivityService.online(),
-      initialActiveCatalogSource: StationCatalogSource.cache,
-      initialCatalogLoadEvents: <StationCatalogLoadEvent>[
-        StationCatalogLoadEvent(
-          timestamp: loadedAt,
-          source: StationCatalogSource.cache,
-          status: StationCatalogEventStatus.success,
-          message: 'Loaded cached stations. This source is now in use.',
-          stationCount: 4,
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.more_vert_rounded));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Debug view').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Active source'), findsOneWidget);
-    expect(find.text('Cached Sedlan catalog'), findsOneWidget);
-    expect(
-      find.textContaining('12:30:00  Cached Sedlan catalog'),
-      findsOneWidget,
-    );
-    expect(find.text('Station loading log'), findsOneWidget);
-    expect(find.text('4 playable stations loaded'), findsOneWidget);
-  });
-
-  testWidgets('debug view lists duplicate stations hidden from Stations', (
-    tester,
-  ) async {
-    final controller = await RadioAppController.bootstrap(
-      repository: StaticCatalogStationRepository(<RadioStation>[
-        RadioStation.fromJson(<String, dynamic>{
-          'stationuuid': 'same-station-id',
-          'name': 'Original Station',
-          'url': 'https://example.com/original',
-          'url_resolved': 'https://example.com/original',
-          'country': 'Serbia',
-          'countrycode': 'RS',
-        }),
-        RadioStation.fromJson(<String, dynamic>{
-          'stationuuid': 'same-station-id',
-          'name': 'ZZ Duplicate Station',
-          'url': 'https://example.com/duplicate',
-          'url_resolved': 'https://example.com/duplicate',
-          'country': 'Serbia',
-          'countrycode': 'RS',
-        }),
-      ]),
-      favoritesStore: InMemoryFavoritesStore(),
-      settingsStore: InMemorySettingsStore(),
-      audioEngine: FakeAudioEngine(),
-      connectivityService: FakeConnectivityService.online(),
-    );
-
-    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.more_vert_rounded));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Debug view').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Duplicate stations'), findsOneWidget);
-    expect(
-      find.text('1 duplicate station hidden from Stations'),
-      findsOneWidget,
-    );
-    expect(find.text('ZZ Duplicate Station'), findsOneWidget);
-    expect(find.text('Duplicate UUID'), findsOneWidget);
-    expect(find.text('Original: Original Station'), findsOneWidget);
-    expect(find.text('Station loading log'), findsOneWidget);
-
-    controller.dispose();
-  });
-
   test('station catalog object count includes unplayable sedlan objects', () {
     final objectCount = countStationCatalogJsonObjects('''
       {
@@ -591,30 +500,27 @@ void main() {
     expect(objectCount, 2);
   });
 
-  test(
-    'controller records remote catalog load failure for debug view',
-    () async {
-      final controller = await RadioAppController.bootstrap(
-        repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
-        settingsStore: InMemorySettingsStore(),
-        audioEngine: FakeAudioEngine(),
-        connectivityService: FakeConnectivityService.online(),
-      );
+  test('controller records remote catalog load failure', () async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
 
-      controller.markRemoteStationCatalogFailed(Exception('offline'));
+    controller.markRemoteStationCatalogFailed(Exception('offline'));
 
-      expect(
-        controller.remoteStationCatalog.status,
-        RemoteStationCatalogStatus.failed,
-      );
-      expect(controller.remoteStationCatalog.debugLabel, contains('offline'));
-      expect(
-        controller.catalogLoadEvents.last.message,
-        contains('Sedlan refresh failed'),
-      );
-    },
-  );
+    expect(
+      controller.remoteStationCatalog.status,
+      RemoteStationCatalogStatus.failed,
+    );
+    expect(controller.remoteStationCatalog.debugLabel, contains('offline'));
+    expect(
+      controller.catalogLoadEvents.last.message,
+      contains('Sedlan refresh failed'),
+    );
+  });
 
   test(
     'controller records successful Sedlan GET and selects it as source',

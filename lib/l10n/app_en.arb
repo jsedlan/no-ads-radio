@@ -22,7 +22,6 @@
   "offline": "Offline",
   "filterStations": "Filter stations",
   "more": "More",
-  "debugView": "Debug view",
   "about": "About",
   "aboutDescription": "NoAds Radio is a simple radio player for listening to live stations without ad-heavy screens or distracting extras.",
   "aboutNoAdsTitle": "No ad clutter",
@@ -179,35 +178,6 @@
   "streamUrl": "Stream URL",
   "enterStationName": "Enter a station name.",
   "enterValidStreamUrl": "Enter a valid stream URL.",
-  "activeSource": "Active source",
-  "noSourceLoaded": "No source loaded",
-  "stationLoadingLog": "Station loading log",
-  "noStationLoadingEvents": "No station loading events recorded.",
-  "duplicateStations": "Duplicate stations",
-  "duplicateStationCount": "{count, plural, =0{No duplicate stations hidden} =1{1 duplicate station hidden from Stations} other{{count} duplicate stations hidden from Stations}}",
-  "@duplicateStationCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "duplicateStationByUuid": "Duplicate UUID",
-  "duplicateStationByNameLocation": "Duplicate name and location",
-  "duplicateStationOriginal": "Original: {station}",
-  "@duplicateStationOriginal": {
-    "placeholders": {
-      "station": {}
-    }
-  },
-  "playableStationCount": "{count, plural, =1{1 playable station loaded} other{{count} playable stations loaded}}",
-  "@playableStationCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "diaspora": "Diaspora",
   "removeFavorite": "Remove favorite",
   "saveFavorite": "Save favorite",

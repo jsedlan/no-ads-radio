@@ -12,11 +12,9 @@ import 'models/radio_station.dart';
 import 'services/android_settings_launcher.dart';
 import 'services/cast_service.dart';
 import 'services/settings_store.dart';
-import 'services/station_catalog_diagnostics.dart';
 
 part 'app_categories_page.dart';
 part 'app_countries_page.dart';
-part 'app_debug_view.dart';
 part 'app_home.dart';
 part 'app_about_page.dart';
 part 'app_manual_stations_page.dart';

@@ -22,7 +22,6 @@
   "offline": "Ван мреже",
   "filterStations": "Филтрирај станице",
   "more": "Више",
-  "debugView": "Дијагностика",
   "about": "О апликацији",
   "aboutDescription": "NoAds Radio је једноставан радио плејер за слушање станица уживо без екрана претрпаних рекламама и сувишних додатака.",
   "aboutNoAdsTitle": "Без рекламног нереда",
@@ -179,35 +178,6 @@
   "streamUrl": "URL стрима",
   "enterStationName": "Унесите назив станице.",
   "enterValidStreamUrl": "Унесите важећи URL стрима.",
-  "activeSource": "Активни извор",
-  "noSourceLoaded": "Ниједан извор није учитан",
-  "stationLoadingLog": "Дневник учитавања станица",
-  "noStationLoadingEvents": "Нема забележених догађаја учитавања станица.",
-  "duplicateStations": "Дуплиране станице",
-  "duplicateStationCount": "{count, plural, =0{Нема сакривених дуплираних станица} one{Сакривена је {count} дуплирана станица из картице Станице} few{Сакривене су {count} дуплиране станице из картице Станице} other{Сакривено је {count} дуплираних станица из картице Станице}}",
-  "@duplicateStationCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "duplicateStationByUuid": "Дуплирани UUID",
-  "duplicateStationByNameLocation": "Дуплирани назив и локација",
-  "duplicateStationOriginal": "Оригинал: {station}",
-  "@duplicateStationOriginal": {
-    "placeholders": {
-      "station": {}
-    }
-  },
-  "playableStationCount": "{count, plural, one{Учитана је {count} станица} few{Учитане су {count} станице} other{Учитано је {count} станица}}",
-  "@playableStationCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "diaspora": "Дијаспора",
   "removeFavorite": "Уклони из омиљених",
   "saveFavorite": "Сачувај у омиљене",

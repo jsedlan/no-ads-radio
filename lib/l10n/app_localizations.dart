@@ -231,12 +231,6 @@ abstract class AppLocalizations {
   /// **'More'**
   String get more;
 
-  /// No description provided for @debugView.
-  ///
-  /// In en, this message translates to:
-  /// **'Debug view'**
-  String get debugView;
-
   /// No description provided for @about.
   ///
   /// In en, this message translates to:
@@ -824,66 +818,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter a valid stream URL.'**
   String get enterValidStreamUrl;
-
-  /// No description provided for @activeSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Active source'**
-  String get activeSource;
-
-  /// No description provided for @noSourceLoaded.
-  ///
-  /// In en, this message translates to:
-  /// **'No source loaded'**
-  String get noSourceLoaded;
-
-  /// No description provided for @stationLoadingLog.
-  ///
-  /// In en, this message translates to:
-  /// **'Station loading log'**
-  String get stationLoadingLog;
-
-  /// No description provided for @noStationLoadingEvents.
-  ///
-  /// In en, this message translates to:
-  /// **'No station loading events recorded.'**
-  String get noStationLoadingEvents;
-
-  /// No description provided for @duplicateStations.
-  ///
-  /// In en, this message translates to:
-  /// **'Duplicate stations'**
-  String get duplicateStations;
-
-  /// No description provided for @duplicateStationCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =0{No duplicate stations hidden} =1{1 duplicate station hidden from Stations} other{{count} duplicate stations hidden from Stations}}'**
-  String duplicateStationCount(int count);
-
-  /// No description provided for @duplicateStationByUuid.
-  ///
-  /// In en, this message translates to:
-  /// **'Duplicate UUID'**
-  String get duplicateStationByUuid;
-
-  /// No description provided for @duplicateStationByNameLocation.
-  ///
-  /// In en, this message translates to:
-  /// **'Duplicate name and location'**
-  String get duplicateStationByNameLocation;
-
-  /// No description provided for @duplicateStationOriginal.
-  ///
-  /// In en, this message translates to:
-  /// **'Original: {station}'**
-  String duplicateStationOriginal(Object station);
-
-  /// No description provided for @playableStationCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{1 playable station loaded} other{{count} playable stations loaded}}'**
-  String playableStationCount(int count);
 
   /// No description provided for @diaspora.
   ///

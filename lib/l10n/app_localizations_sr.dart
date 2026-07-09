@@ -77,9 +77,6 @@ class AppLocalizationsSr extends AppLocalizations {
   String get more => 'Више';
 
   @override
-  String get debugView => 'Дијагностика';
-
-  @override
   String get about => 'О апликацији';
 
   @override
@@ -435,58 +432,6 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get enterValidStreamUrl => 'Унесите важећи URL стрима.';
-
-  @override
-  String get activeSource => 'Активни извор';
-
-  @override
-  String get noSourceLoaded => 'Ниједан извор није учитан';
-
-  @override
-  String get stationLoadingLog => 'Дневник учитавања станица';
-
-  @override
-  String get noStationLoadingEvents =>
-      'Нема забележених догађаја учитавања станица.';
-
-  @override
-  String get duplicateStations => 'Дуплиране станице';
-
-  @override
-  String duplicateStationCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Сакривено је $count дуплираних станица из картице Станице',
-      few: 'Сакривене су $count дуплиране станице из картице Станице',
-      one: 'Сакривена је $count дуплирана станица из картице Станице',
-      zero: 'Нема сакривених дуплираних станица',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get duplicateStationByUuid => 'Дуплирани UUID';
-
-  @override
-  String get duplicateStationByNameLocation => 'Дуплирани назив и локација';
-
-  @override
-  String duplicateStationOriginal(Object station) {
-    return 'Оригинал: $station';
-  }
-
-  @override
-  String playableStationCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Учитано је $count станица',
-      few: 'Учитане су $count станице',
-      one: 'Учитана је $count станица',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get diaspora => 'Дијаспора';
@@ -1357,9 +1302,6 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get more => 'Više';
 
   @override
-  String get debugView => 'Dijagnostika';
-
-  @override
   String get about => 'O aplikaciji';
 
   @override
@@ -1716,58 +1658,6 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
 
   @override
   String get enterValidStreamUrl => 'Unesite važeći URL strima.';
-
-  @override
-  String get activeSource => 'Aktivni izvor';
-
-  @override
-  String get noSourceLoaded => 'Nijedan izvor nije učitan';
-
-  @override
-  String get stationLoadingLog => 'Dnevnik učitavanja stanica';
-
-  @override
-  String get noStationLoadingEvents =>
-      'Nema zabeleženih događaja učitavanja stanica.';
-
-  @override
-  String get duplicateStations => 'Duplirane stanice';
-
-  @override
-  String duplicateStationCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Sakriveno je $count dupliranih stanica iz kartice Stanice',
-      few: 'Sakrivene su $count duplirane stanice iz kartice Stanice',
-      one: 'Sakrivena je $count duplirana stanica iz kartice Stanice',
-      zero: 'Nema sakrivenih dupliranih stanica',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get duplicateStationByUuid => 'Duplirani UUID';
-
-  @override
-  String get duplicateStationByNameLocation => 'Duplirani naziv i lokacija';
-
-  @override
-  String duplicateStationOriginal(Object station) {
-    return 'Original: $station';
-  }
-
-  @override
-  String playableStationCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Učitano je $count stanica',
-      few: 'Učitane su $count stanice',
-      one: 'Učitana je $count stanica',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get diaspora => 'Dijaspora';
