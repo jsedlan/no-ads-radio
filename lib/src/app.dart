@@ -22,6 +22,7 @@ part 'app_about_page.dart';
 part 'app_manual_stations_page.dart';
 part 'app_player.dart';
 part 'app_settings_pages.dart';
+part 'app_version.dart';
 part 'app_station_tag_translations.dart';
 part 'app_setup.dart';
 part 'app_station_widgets.dart';

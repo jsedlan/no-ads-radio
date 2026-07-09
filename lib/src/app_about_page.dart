@@ -3,8 +3,6 @@ part of 'app.dart';
 class _AboutPage extends StatelessWidget {
   const _AboutPage();
 
-  static const String _version = '1.0.0+1';
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -71,7 +69,7 @@ class _AboutPage extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      context.l10n.appVersion(_version),
+                                      context.l10n.appVersion(appVersion),
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: _mutedTextColor(context),

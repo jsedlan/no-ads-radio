@@ -2,6 +2,7 @@
 set -eu
 
 pubspec_file="pubspec.yaml"
+app_version_file="lib/src/app_version.dart"
 
 if [ ! -f "$pubspec_file" ]; then
   echo "pre-commit: pubspec.yaml not found" >&2
@@ -18,11 +19,18 @@ version_value=$(printf '%s\n' "$version_line" | sed -E 's/^version:[[:space:]]*/
 version_name=${version_value%+*}
 build_number=${version_value#*+}
 next_build_number=$((build_number + 1))
-next_version="version: ${version_name}+${next_build_number}"
+next_version_value="${version_name}+${next_build_number}"
+next_version="version: ${next_version_value}"
 
 tmp_file=$(mktemp)
 sed -E "s/^version:[[:space:]]*[0-9]+[.][0-9]+[.][0-9]+[+][0-9]+[[:space:]]*$/$(printf '%s' "$next_version" | sed 's/[\/&]/\\&/g')/" "$pubspec_file" > "$tmp_file"
 mv "$tmp_file" "$pubspec_file"
 
-git add "$pubspec_file"
-echo "pre-commit: bumped pubspec build number to ${version_name}+${next_build_number}"
+if [ -f "$app_version_file" ]; then
+  tmp_file=$(mktemp)
+  sed -E "s/^const String appVersion = '.*';$/const String appVersion = '${next_version_value}';/" "$app_version_file" > "$tmp_file"
+  mv "$tmp_file" "$app_version_file"
+fi
+
+git add "$pubspec_file" "$app_version_file"
+echo "pre-commit: bumped app build number to ${next_version_value}"

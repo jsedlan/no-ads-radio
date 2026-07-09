@@ -148,7 +148,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('About'), findsOneWidget);
-    expect(find.text('Version 1.0.0+1'), findsOneWidget);
+    expect(find.text('Version 1.0.0+2'), findsOneWidget);
     expect(find.text('No ad clutter'), findsOneWidget);
 
     controller.dispose();
