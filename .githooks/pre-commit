@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+pubspec_file="pubspec.yaml"
+
+if [ ! -f "$pubspec_file" ]; then
+  echo "pre-commit: pubspec.yaml not found" >&2
+  exit 1
+fi
+
+version_line=$(grep -E '^version:[[:space:]]*[0-9]+[.][0-9]+[.][0-9]+[+][0-9]+[[:space:]]*$' "$pubspec_file" || true)
+if [ -z "$version_line" ]; then
+  echo "pre-commit: expected version format like 'version: 1.0.0+1' in pubspec.yaml" >&2
+  exit 1
+fi
+
+version_value=$(printf '%s\n' "$version_line" | sed -E 's/^version:[[:space:]]*//')
+version_name=${version_value%+*}
+build_number=${version_value#*+}
+next_build_number=$((build_number + 1))
+next_version="version: ${version_name}+${next_build_number}"
+
+tmp_file=$(mktemp)
+sed -E "s/^version:[[:space:]]*[0-9]+[.][0-9]+[.][0-9]+[+][0-9]+[[:space:]]*$/$(printf '%s' "$next_version" | sed 's/[\/&]/\\&/g')/" "$pubspec_file" > "$tmp_file"
+mv "$tmp_file" "$pubspec_file"
+
+git add "$pubspec_file"
+echo "pre-commit: bumped pubspec build number to ${version_name}+${next_build_number}"
