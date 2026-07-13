@@ -220,6 +220,7 @@ class _StationTile extends StatelessWidget {
     final theme = Theme.of(context);
     final isCurrent =
         controller.currentStation?.identityKey == station.identityKey;
+    final opensNowPlaying = isCurrent && controller.playback.isPlaying;
     final stationTitleStyle = GoogleFonts.notoSans(
       textStyle: theme.textTheme.titleMedium?.copyWith(
         fontWeight: FontWeight.w700,
@@ -237,7 +238,7 @@ class _StationTile extends StatelessWidget {
           ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))
           : null,
       child: ListTile(
-        onTap: isCurrent
+        onTap: opensNowPlaying
             ? () => _openNowPlayingScreen(context, controller)
             : () => controller.playStation(station),
         contentPadding: const EdgeInsets.only(

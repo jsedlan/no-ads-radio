@@ -420,6 +420,36 @@ void main() {
     controller.dispose();
   });
 
+  testWidgets('tapping paused current station starts playback', (tester) async {
+    final audioEngine = FakeAudioEngine();
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      favoritesStore: InMemoryFavoritesStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: audioEngine,
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await controller.playStation(controller.discoverStations.first);
+    await controller.pausePlayback();
+    await tester.pumpAndSettle();
+
+    expect(controller.playback.isPaused, isTrue);
+    expect(audioEngine.playStreamCount, 1);
+
+    await tester.tap(find.text('Test Station 1').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Now playing'), findsNothing);
+    expect(audioEngine.playStreamCount, 2);
+    expect(controller.playback.isPlaying, isTrue);
+
+    controller.dispose();
+  });
+
   testWidgets('filtered station count provides a clear filter action', (
     tester,
   ) async {
