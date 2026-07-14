@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/favorite_category.dart';
+import '../models/station_category.dart';
 import '../models/radio_station.dart';
 
 enum AppThemePreference {
@@ -36,50 +36,55 @@ class AppSettings {
     this.themePreference = AppThemePreference.dark,
     this.languagePreference = AppLanguagePreference.system,
     this.showStationIcon = false,
-    this.circleThroughFavorites = true,
+    this.autoPlayNextCategoryStation = true,
     this.countryCodes = const <String>[],
     this.hasCompletedCountrySetup = true,
     this.manualStations = const <RadioStation>[],
     this.recentlyPlayedStations = const <RadioStation>[],
-    this.favoriteCategories = const <FavoriteCategory>[
-      FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+    this.stationCategories = const <StationCategory>[
+      StationCategory(id: 'category-0-saved', name: 'Saved'),
     ],
+    this.activeStationCategoryId = '',
   });
 
   final AppThemePreference themePreference;
   final AppLanguagePreference languagePreference;
   final bool showStationIcon;
-  final bool circleThroughFavorites;
+  final bool autoPlayNextCategoryStation;
   final List<String> countryCodes;
   final bool hasCompletedCountrySetup;
   final List<RadioStation> manualStations;
   final List<RadioStation> recentlyPlayedStations;
-  final List<FavoriteCategory> favoriteCategories;
+  final List<StationCategory> stationCategories;
+  final String activeStationCategoryId;
 
   AppSettings copyWith({
     AppThemePreference? themePreference,
     AppLanguagePreference? languagePreference,
     bool? showStationIcon,
-    bool? circleThroughFavorites,
+    bool? autoPlayNextCategoryStation,
     List<String>? countryCodes,
     bool? hasCompletedCountrySetup,
     List<RadioStation>? manualStations,
     List<RadioStation>? recentlyPlayedStations,
-    List<FavoriteCategory>? favoriteCategories,
+    List<StationCategory>? stationCategories,
+    String? activeStationCategoryId,
   }) {
     return AppSettings(
       themePreference: themePreference ?? this.themePreference,
       languagePreference: languagePreference ?? this.languagePreference,
       showStationIcon: showStationIcon ?? this.showStationIcon,
-      circleThroughFavorites:
-          circleThroughFavorites ?? this.circleThroughFavorites,
+      autoPlayNextCategoryStation:
+          autoPlayNextCategoryStation ?? this.autoPlayNextCategoryStation,
       countryCodes: countryCodes ?? this.countryCodes,
       hasCompletedCountrySetup:
           hasCompletedCountrySetup ?? this.hasCompletedCountrySetup,
       manualStations: manualStations ?? this.manualStations,
       recentlyPlayedStations:
           recentlyPlayedStations ?? this.recentlyPlayedStations,
-      favoriteCategories: favoriteCategories ?? this.favoriteCategories,
+      stationCategories: stationCategories ?? this.stationCategories,
+      activeStationCategoryId:
+          activeStationCategoryId ?? this.activeStationCategoryId,
     );
   }
 }
@@ -95,19 +100,22 @@ class SharedPreferencesSettingsStore implements SettingsStore {
   static const String _showStationIconKey = 'show_station_icon';
   static const String _themePreferenceKey = 'theme_preference';
   static const String _languagePreferenceKey = 'language_preference';
-  static const String _circleThroughFavoritesKey = 'circle_through_favorites';
+  static const String _autoPlayNextCategoryStationKey =
+      'auto_play_next_category_station';
   static const String _countryCodesKey = 'country_codes';
   static const String _hasCompletedCountrySetupKey =
       'has_completed_country_setup';
   static const String _manualStationsKey = 'manual_stations';
   static const String _recentlyPlayedStationsKey = 'recently_played_stations';
-  static const String _favoriteCategoriesKey = 'favorite_categories';
+  static const String _stationCategoriesKey = 'station_categories';
+  static const String _activeStationCategoryIdKey =
+      'active_station_category_id';
 
   final SharedPreferences _preferences;
 
   @override
   Future<AppSettings> loadSettings() async {
-    final favoriteCategories = _loadFavoriteCategories();
+    final stationCategories = _loadStationCategories();
     final countryCodes =
         _preferences.getStringList(_countryCodesKey) ?? const <String>[];
     return AppSettings(
@@ -118,8 +126,8 @@ class SharedPreferencesSettingsStore implements SettingsStore {
         _preferences.getString(_languagePreferenceKey),
       ),
       showStationIcon: _preferences.getBool(_showStationIconKey) ?? false,
-      circleThroughFavorites:
-          _preferences.getBool(_circleThroughFavoritesKey) ?? true,
+      autoPlayNextCategoryStation:
+          _preferences.getBool(_autoPlayNextCategoryStationKey) ?? true,
       countryCodes: List<String>.unmodifiable(countryCodes),
       hasCompletedCountrySetup:
           _preferences.getBool(_hasCompletedCountrySetupKey) ?? false,
@@ -132,7 +140,9 @@ class SharedPreferencesSettingsStore implements SettingsStore {
                 const <String>[])
             .map(RadioStation.fromStorage),
       ),
-      favoriteCategories: favoriteCategories,
+      stationCategories: stationCategories,
+      activeStationCategoryId:
+          _preferences.getString(_activeStationCategoryIdKey) ?? '',
     );
   }
 
@@ -148,8 +158,8 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     );
     await _preferences.setBool(_showStationIconKey, settings.showStationIcon);
     await _preferences.setBool(
-      _circleThroughFavoritesKey,
-      settings.circleThroughFavorites,
+      _autoPlayNextCategoryStationKey,
+      settings.autoPlayNextCategoryStation,
     );
     await _preferences.setStringList(_countryCodesKey, settings.countryCodes);
     await _preferences.setBool(
@@ -167,21 +177,25 @@ class SharedPreferencesSettingsStore implements SettingsStore {
           .toList(),
     );
     await _preferences.setStringList(
-      _favoriteCategoriesKey,
-      settings.favoriteCategories
+      _stationCategoriesKey,
+      settings.stationCategories
           .map((category) => category.toStorage())
           .toList(growable: false),
     );
+    await _preferences.setString(
+      _activeStationCategoryIdKey,
+      settings.activeStationCategoryId,
+    );
   }
 
-  List<FavoriteCategory> _loadFavoriteCategories() {
+  List<StationCategory> _loadStationCategories() {
     final rawCategories =
-        _preferences.getStringList(_favoriteCategoriesKey) ??
-        const <String>['Favorites'];
-    final categories = <FavoriteCategory>[];
+        _preferences.getStringList(_stationCategoriesKey) ??
+        const <String>['Saved'];
+    final categories = <StationCategory>[];
 
     for (var index = 0; index < rawCategories.length; index += 1) {
-      final category = FavoriteCategory.fromStorage(
+      final category = StationCategory.fromStorage(
         rawCategories[index],
         index: index,
       );
@@ -191,11 +205,11 @@ class SharedPreferencesSettingsStore implements SettingsStore {
     }
 
     if (categories.isEmpty) {
-      return const <FavoriteCategory>[
-        FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+      return const <StationCategory>[
+        StationCategory(id: 'category-0-saved', name: 'Saved'),
       ];
     }
 
-    return List<FavoriteCategory>.unmodifiable(categories);
+    return List<StationCategory>.unmodifiable(categories);
   }
 }

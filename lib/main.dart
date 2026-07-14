@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/app.dart';
 import 'src/audio/audio_engine.dart';
 import 'src/controllers/radio_app_controller.dart';
-import 'src/services/favorites_store.dart';
+import 'src/services/category_stations_store.dart';
 import 'src/services/connectivity_service.dart';
 import 'src/services/cast_service.dart';
 import 'src/services/local_catalog_station_repository.dart';
@@ -44,7 +44,7 @@ Future<void> main() async {
 
   final controller = await RadioAppController.bootstrap(
     repository: LocalCatalogStationRepository(localStations),
-    favoritesStore: SharedPreferencesFavoritesStore(preferences),
+    categoryStationsStore: SharedPreferencesCategoryStationsStore(preferences),
     settingsStore: SharedPreferencesSettingsStore(preferences),
     audioEngine: JustAudioEngine(),
     castService: GoogleCastService(),

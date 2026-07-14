@@ -264,7 +264,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutStationCatalogDescription.
   ///
   /// In en, this message translates to:
-  /// **'Stations are loaded from the app catalog and can be filtered by country, saved as favorites, or added manually.'**
+  /// **'Stations are loaded from the app catalog and can be filtered by country, added to categories, or added manually.'**
   String get aboutStationCatalogDescription;
 
   /// No description provided for @aboutPrivacyTitle.
@@ -276,7 +276,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutPrivacyDescription.
   ///
   /// In en, this message translates to:
-  /// **'Settings, favorites, manual stations, and recently played stations are stored on this device.'**
+  /// **'Settings, categories, manual stations, and recently played stations are stored on this device.'**
   String get aboutPrivacyDescription;
 
   /// No description provided for @appVersion.
@@ -399,11 +399,11 @@ abstract class AppLocalizations {
   /// **'Stations'**
   String get stations;
 
-  /// No description provided for @noFavoritesInCategory.
+  /// No description provided for @noStationsInCategory.
   ///
   /// In en, this message translates to:
-  /// **'No favorites in {category} yet. Save stations from Stations to build this category.'**
-  String noFavoritesInCategory(Object category);
+  /// **'No stations in {category} yet. Add stations from Stations to build this category.'**
+  String noStationsInCategory(Object category);
 
   /// No description provided for @nowPlaying.
   ///
@@ -423,11 +423,11 @@ abstract class AppLocalizations {
   /// **'Nothing is playing.'**
   String get nothingPlaying;
 
-  /// No description provided for @previousFavorite.
+  /// No description provided for @previousCategoryStation.
   ///
   /// In en, this message translates to:
-  /// **'Previous favorite'**
-  String get previousFavorite;
+  /// **'Previous station in category'**
+  String get previousCategoryStation;
 
   /// No description provided for @pause.
   ///
@@ -441,11 +441,11 @@ abstract class AppLocalizations {
   /// **'Play'**
   String get play;
 
-  /// No description provided for @nextFavorite.
+  /// No description provided for @nextCategoryStation.
   ///
   /// In en, this message translates to:
-  /// **'Next favorite'**
-  String get nextFavorite;
+  /// **'Next station in category'**
+  String get nextCategoryStation;
 
   /// No description provided for @cast.
   ///
@@ -693,23 +693,23 @@ abstract class AppLocalizations {
   /// **'Display station artwork in lists and the player bar.'**
   String get showStationIconDescription;
 
-  /// No description provided for @autoPlayNextFavorite.
+  /// No description provided for @autoPlayNextCategoryStation.
   ///
   /// In en, this message translates to:
-  /// **'Auto-play next favorite'**
-  String get autoPlayNextFavorite;
+  /// **'Auto-play next station'**
+  String get autoPlayNextCategoryStation;
 
-  /// No description provided for @autoPlayNextFavoriteDescription.
+  /// No description provided for @autoPlayNextCategoryStationDescription.
   ///
   /// In en, this message translates to:
-  /// **'When a stream fails, move to the next favorite and wrap to the start.'**
-  String get autoPlayNextFavoriteDescription;
+  /// **'When a stream fails, move to the next station in its category and wrap to the start.'**
+  String get autoPlayNextCategoryStationDescription;
 
-  /// No description provided for @autoPlayNextFavoriteDisabledDescription.
+  /// No description provided for @autoPlayNextCategoryStationDisabledDescription.
   ///
   /// In en, this message translates to:
-  /// **'When a stream fails, move to the next favorite and wrap to the start. Add at least two favorites to enable this option.'**
-  String get autoPlayNextFavoriteDisabledDescription;
+  /// **'When a stream fails, move to the next station in its category and wrap to the start. Add at least two stations to a category to enable this option.'**
+  String get autoPlayNextCategoryStationDisabledDescription;
 
   /// No description provided for @couldNotOpenAndroidSettings.
   ///
@@ -726,14 +726,14 @@ abstract class AppLocalizations {
   /// No description provided for @categoriesDescription.
   ///
   /// In en, this message translates to:
-  /// **'Add as many categories as you like. Only the first 2 will be visible as tabs on the bottom.'**
+  /// **'Add as many categories as you like. The Categories tab opens the last category you used.'**
   String get categoriesDescription;
 
-  /// No description provided for @favorites.
+  /// No description provided for @savedCategory.
   ///
   /// In en, this message translates to:
-  /// **'Favorites'**
-  String get favorites;
+  /// **'Saved'**
+  String get savedCategory;
 
   /// No description provided for @newCategory.
   ///
@@ -825,17 +825,17 @@ abstract class AppLocalizations {
   /// **'Diaspora'**
   String get diaspora;
 
-  /// No description provided for @removeFavorite.
+  /// No description provided for @removeFromCategory.
   ///
   /// In en, this message translates to:
-  /// **'Remove favorite'**
-  String get removeFavorite;
+  /// **'Remove from category'**
+  String get removeFromCategory;
 
-  /// No description provided for @saveFavorite.
+  /// No description provided for @addToCategory.
   ///
   /// In en, this message translates to:
-  /// **'Save favorite'**
-  String get saveFavorite;
+  /// **'Add to category'**
+  String get addToCategory;
 
   /// No description provided for @unknown.
   ///

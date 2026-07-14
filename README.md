@@ -15,7 +15,7 @@ The app uses the Radio Browser network for station discovery and streaming.
 * Discover stations from Radio Browser mirror servers
 * Browse most-clicked, top-voted, and recently played stations
 * Search by station name, country, language, and tags
-* Save favorite stations locally
+* Add stations to categories locally
 * Resolve stream URLs dynamically before playback
 * Cross-platform support for Android and iOS
 
@@ -23,7 +23,7 @@ The app uses the Radio Browser network for station discovery and streaming.
 
 * Built with Flutter
 * Uses the Radio Browser API
-* Favorites are stored locally using shared_preferences
+* Categories are stored locally using shared_preferences
 * Sends a descriptive User-Agent as requested by the Radio Browser API documentation
 * Cleartext network access is enabled for native targets because many radio streams still use plain http
 

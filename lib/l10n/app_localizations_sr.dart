@@ -95,14 +95,14 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get aboutStationCatalogDescription =>
-      'Станице се учитавају из каталога апликације и могу да се филтрирају по земљи, чувају као омиљене или додају ручно.';
+      'Станице се учитавају из каталога апликације и могу да се филтрирају по земљи, додају у категорије или додају ручно.';
 
   @override
   String get aboutPrivacyTitle => 'Уз пажњу према приватности';
 
   @override
   String get aboutPrivacyDescription =>
-      'Подешавања, омиљене станице, ручно додате станице и недавно слушане станице чувају се на овом уређају.';
+      'Подешавања, категорије, ручно додате станице и недавно слушане станице чувају се на овом уређају.';
 
   @override
   String appVersion(Object version) {
@@ -188,8 +188,8 @@ class AppLocalizationsSr extends AppLocalizations {
   String get stations => 'Станице';
 
   @override
-  String noFavoritesInCategory(Object category) {
-    return 'Још нема омиљених станица у категорији $category. Сачувајте станице са картице Станице.';
+  String noStationsInCategory(Object category) {
+    return 'Још нема станица у категорији $category. Додајте станице са картице Станице.';
   }
 
   @override
@@ -202,7 +202,7 @@ class AppLocalizationsSr extends AppLocalizations {
   String get nothingPlaying => 'Ништа се не репродукује.';
 
   @override
-  String get previousFavorite => 'Претходна омиљена';
+  String get previousCategoryStation => 'Претходна станица у категорији';
 
   @override
   String get pause => 'Паузирај';
@@ -211,7 +211,7 @@ class AppLocalizationsSr extends AppLocalizations {
   String get play => 'Пусти';
 
   @override
-  String get nextFavorite => 'Следећа омиљена';
+  String get nextCategoryStation => 'Следећа станица у категорији';
 
   @override
   String get cast => 'Пребаци репродукцију';
@@ -365,15 +365,15 @@ class AppLocalizationsSr extends AppLocalizations {
       'Прикажи слику станице у листама и траци плејера.';
 
   @override
-  String get autoPlayNextFavorite => 'Аутоматски пусти следећу омиљену';
+  String get autoPlayNextCategoryStation => 'Аутоматски пусти следећу станицу';
 
   @override
-  String get autoPlayNextFavoriteDescription =>
-      'Када стрим откаже, пређи на следећу омиљену станицу и настави од почетка листе.';
+  String get autoPlayNextCategoryStationDescription =>
+      'Када стрим откаже, пређи на следећу станицу у њеној категорији и настави од почетка листе.';
 
   @override
-  String get autoPlayNextFavoriteDisabledDescription =>
-      'Када стрим откаже, пређи на следећу омиљену станицу и настави од почетка листе. Додајте најмање две омиљене станице да бисте укључили ову опцију.';
+  String get autoPlayNextCategoryStationDisabledDescription =>
+      'Када стрим откаже, пређи на следећу станицу у њеној категорији и настави од почетка листе. Додајте најмање две станице у категорију да бисте укључили ову опцију.';
 
   @override
   String get couldNotOpenAndroidSettings =>
@@ -384,10 +384,10 @@ class AppLocalizationsSr extends AppLocalizations {
 
   @override
   String get categoriesDescription =>
-      'Додајте колико год категорија желите. Само прве 2 ће бити видљиве као картице при дну.';
+      'Додајте колико год категорија желите. Картица Категорије отвара последњу категорију коју сте користили.';
 
   @override
-  String get favorites => 'Омиљене';
+  String get savedCategory => 'Сачуване';
 
   @override
   String get newCategory => 'Нова категорија';
@@ -437,10 +437,10 @@ class AppLocalizationsSr extends AppLocalizations {
   String get diaspora => 'Дијаспора';
 
   @override
-  String get removeFavorite => 'Уклони из омиљених';
+  String get removeFromCategory => 'Уклони из категорије';
 
   @override
-  String get saveFavorite => 'Сачувај у омиљене';
+  String get addToCategory => 'Додај у категорију';
 
   @override
   String get unknown => 'Непознато';
@@ -1320,14 +1320,14 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
 
   @override
   String get aboutStationCatalogDescription =>
-      'Stanice se učitavaju iz kataloga aplikacije i mogu da se filtriraju po zemlji, čuvaju kao omiljene ili dodaju ručno.';
+      'Stanice se učitavaju iz kataloga aplikacije i mogu da se filtriraju po zemlji, dodaju u kategorije ili dodaju ručno.';
 
   @override
   String get aboutPrivacyTitle => 'Uz pažnju prema privatnosti';
 
   @override
   String get aboutPrivacyDescription =>
-      'Podešavanja, omiljene stanice, ručno dodate stanice i nedavno slušane stanice čuvaju se na ovom uređaju.';
+      'Podešavanja, kategorije, ručno dodate stanice i nedavno slušane stanice čuvaju se na ovom uređaju.';
 
   @override
   String appVersion(Object version) {
@@ -1413,8 +1413,8 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get stations => 'Stanice';
 
   @override
-  String noFavoritesInCategory(Object category) {
-    return 'Još nema omiljenih stanica u kategoriji $category. Sačuvajte stanice sa kartice Stanice.';
+  String noStationsInCategory(Object category) {
+    return 'Još nema stanica u kategoriji $category. Dodajte stanice sa kartice Stanice.';
   }
 
   @override
@@ -1427,7 +1427,7 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get nothingPlaying => 'Ništa se ne reprodukuje.';
 
   @override
-  String get previousFavorite => 'Prethodna omiljena';
+  String get previousCategoryStation => 'Prethodna stanica u kategoriji';
 
   @override
   String get pause => 'Pauziraj';
@@ -1436,7 +1436,7 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get play => 'Pusti';
 
   @override
-  String get nextFavorite => 'Sledeća omiljena';
+  String get nextCategoryStation => 'Sledeća stanica u kategoriji';
 
   @override
   String get cast => 'Prebaci reprodukciju';
@@ -1591,15 +1591,15 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
       'Prikaži sliku stanice u listama i traci plejera.';
 
   @override
-  String get autoPlayNextFavorite => 'Automatski pusti sledeću omiljenu';
+  String get autoPlayNextCategoryStation => 'Automatski pusti sledeću stanicu';
 
   @override
-  String get autoPlayNextFavoriteDescription =>
-      'Kada strim otkaže, pređi na sledeću omiljenu stanicu i nastavi od početka liste.';
+  String get autoPlayNextCategoryStationDescription =>
+      'Kada strim otkaže, pređi na sledeću stanicu u njenoj kategoriji i nastavi od početka liste.';
 
   @override
-  String get autoPlayNextFavoriteDisabledDescription =>
-      'Kada strim otkaže, pređi na sledeću omiljenu stanicu i nastavi od početka liste. Dodajte najmanje dve omiljene stanice da biste uključili ovu opciju.';
+  String get autoPlayNextCategoryStationDisabledDescription =>
+      'Kada strim otkaže, pređi na sledeću stanicu u njenoj kategoriji i nastavi od početka liste. Dodajte najmanje dve stanice u kategoriju da biste uključili ovu opciju.';
 
   @override
   String get couldNotOpenAndroidSettings =>
@@ -1610,10 +1610,10 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
 
   @override
   String get categoriesDescription =>
-      'Dodajte koliko god kategorija želite. Samo prve 2 će biti vidljive kao kartice pri dnu.';
+      'Dodajte koliko god kategorija želite. Kartica Kategorije otvara poslednju kategoriju koju ste koristili.';
 
   @override
-  String get favorites => 'Omiljene';
+  String get savedCategory => 'Sačuvane';
 
   @override
   String get newCategory => 'Nova kategorija';
@@ -1663,10 +1663,10 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get diaspora => 'Dijaspora';
 
   @override
-  String get removeFavorite => 'Ukloni iz omiljenih';
+  String get removeFromCategory => 'Ukloni iz kategorije';
 
   @override
-  String get saveFavorite => 'Sačuvaj u omiljene';
+  String get addToCategory => 'Dodaj u kategoriju';
 
   @override
   String get unknown => 'Nepoznato';

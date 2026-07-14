@@ -229,7 +229,9 @@ class _StationTile extends StatelessWidget {
     final stationSubtitleStyle = GoogleFonts.notoSans(
       textStyle: theme.textTheme.bodyMedium,
     );
-    final isFavorite = controller.isFavorite(station.identityKey);
+    final isStationInCategory = controller.isStationInCategory(
+      station.identityKey,
+    );
 
     final tile = Card(
       margin: EdgeInsets.zero,
@@ -328,13 +330,15 @@ class _StationTile extends StatelessWidget {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               visualDensity: VisualDensity.compact,
-              tooltip: isFavorite
-                  ? context.l10n.removeFavorite
-                  : context.l10n.saveFavorite,
-              onPressed: () => controller.toggleFavorite(station),
+              tooltip: isStationInCategory
+                  ? context.l10n.removeFromCategory
+                  : context.l10n.addToCategory,
+              onPressed: () => controller.toggleStationInCategory(station),
               icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? theme.colorScheme.onSurface : null,
+                isStationInCategory
+                    ? Icons.playlist_add_check_rounded
+                    : Icons.playlist_add_rounded,
+                color: isStationInCategory ? theme.colorScheme.onSurface : null,
               ),
             ),
           ],
@@ -515,7 +519,7 @@ class _StationDragFeedback extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Icon(Icons.favorite_rounded, color: theme.colorScheme.onSurface),
+            Icon(Icons.category_rounded, color: theme.colorScheme.onSurface),
           ],
         ),
       ),
@@ -603,33 +607,21 @@ String _selectedCountriesSummary(
 
 String _localizedCategoryName(BuildContext context, String categoryName) {
   final normalized = categoryName.trim();
-  return normalized == 'Favorites' ? context.l10n.favorites : normalized;
+  return normalized == 'Saved' ? context.l10n.savedCategory : normalized;
 }
 
-String _favoriteCategoriesSummary(
+String _stationCategoriesSummary(
   BuildContext context,
-  List<FavoriteCategory> categories,
+  List<StationCategory> categories,
 ) {
   final normalized = categories
       .map((category) => _localizedCategoryName(context, category.name))
       .where((value) => value.isNotEmpty)
       .toList(growable: false);
   if (normalized.isEmpty) {
-    return context.l10n.favorites;
+    return context.l10n.savedCategory;
   }
   return normalized.join(', ');
-}
-
-List<FavoriteCategory> _visibleCategories(List<FavoriteCategory> categories) {
-  final normalized = categories
-      .where((category) => category.name.trim().isNotEmpty)
-      .toList(growable: false);
-  if (normalized.isEmpty) {
-    return const <FavoriteCategory>[
-      FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
-    ];
-  }
-  return normalized.take(2).toList(growable: false);
 }
 
 List<_CountryOption> _countryOptionsForCodes(List<String> countryCodes) {

@@ -10,26 +10,27 @@ class RadioHomePage extends StatefulWidget {
 }
 
 class _RadioHomePageState extends State<RadioHomePage> {
-  int? _favoriteDropTargetIndex;
+  int? _categoryDropTargetIndex;
   bool _isDraggingDiscoverStation = false;
 
   RadioAppController get controller => widget.controller;
 
-  void _handleFavoriteDrop(RadioStation station, int categoryIndex) {
-    unawaited(_saveFavoriteFromDrop(station, categoryIndex));
+  void _handleCategoryDrop(RadioStation station) {
+    unawaited(_addToCategoryFromDrop(station));
   }
 
-  Future<void> _saveFavoriteFromDrop(
-    RadioStation station,
-    int categoryIndex,
-  ) async {
-    final category = _visibleCategories(
-      controller.favoriteCategories,
-    )[categoryIndex];
-    if (!controller.isFavorite(station.identityKey, categoryId: category.id)) {
-      await controller.toggleFavorite(station, categoryId: category.id);
+  Future<void> _addToCategoryFromDrop(RadioStation station) async {
+    final category = controller.activeStationCategory;
+    if (!controller.isStationInCategory(
+      station.identityKey,
+      categoryId: category.id,
+    )) {
+      await controller.toggleStationInCategory(
+        station,
+        categoryId: category.id,
+      );
     }
-    controller.selectTab(categoryIndex + 1);
+    controller.selectTab(1);
   }
 
   @override
@@ -37,11 +38,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final visibleCategories = _visibleCategories(
-          controller.favoriteCategories,
-        );
-        final totalTabCount = 1 + visibleCategories.length;
-        final selectedIndex = controller.selectedTab >= totalTabCount
+        final selectedIndex = controller.selectedTab > 1
             ? 0
             : controller.selectedTab;
         if (controller.isBootstrapping) {
@@ -62,20 +59,19 @@ class _RadioHomePageState extends State<RadioHomePage> {
                 _Header(
                   controller: controller,
                   selectedIndex: selectedIndex,
-                  visibleCategories: visibleCategories,
                   isDraggingDiscoverStation: _isDraggingDiscoverStation,
-                  favoriteDropTargetIndex: _favoriteDropTargetIndex,
-                  onFavoriteDropTargetChanged: (index) {
+                  categoryDropTargetIndex: _categoryDropTargetIndex,
+                  onCategoryDropTargetChanged: (index) {
                     setState(() {
-                      _favoriteDropTargetIndex = index;
+                      _categoryDropTargetIndex = index;
                     });
                   },
-                  onFavoriteDropAccepted: (station, categoryIndex) {
+                  onCategoryDropAccepted: (station) {
                     setState(() {
-                      _favoriteDropTargetIndex = null;
+                      _categoryDropTargetIndex = null;
                       _isDraggingDiscoverStation = false;
                     });
-                    _handleFavoriteDrop(station, categoryIndex);
+                    _handleCategoryDrop(station);
                   },
                 ),
                 Expanded(
@@ -91,17 +87,12 @@ class _RadioHomePageState extends State<RadioHomePage> {
                           setState(() {
                             _isDraggingDiscoverStation = isDragging;
                             if (!isDragging) {
-                              _favoriteDropTargetIndex = null;
+                              _categoryDropTargetIndex = null;
                             }
                           });
                         },
                       ),
-                      ...visibleCategories.map(
-                        (category) => _FavoritesTab(
-                          controller: controller,
-                          category: category,
-                        ),
-                      ),
+                      _CategoriesTab(controller: controller),
                     ],
                   ),
                 ),
@@ -143,21 +134,18 @@ class _TopTabBar extends StatelessWidget {
   const _TopTabBar({
     required this.controller,
     required this.selectedIndex,
-    required this.visibleCategories,
     required this.isDraggingDiscoverStation,
-    required this.favoriteDropTargetIndex,
-    required this.onFavoriteDropTargetChanged,
-    required this.onFavoriteDropAccepted,
+    required this.categoryDropTargetIndex,
+    required this.onCategoryDropTargetChanged,
+    required this.onCategoryDropAccepted,
   });
 
   final RadioAppController controller;
   final int selectedIndex;
-  final List<FavoriteCategory> visibleCategories;
   final bool isDraggingDiscoverStation;
-  final int? favoriteDropTargetIndex;
-  final ValueChanged<int?> onFavoriteDropTargetChanged;
-  final void Function(RadioStation station, int categoryIndex)
-  onFavoriteDropAccepted;
+  final int? categoryDropTargetIndex;
+  final ValueChanged<int?> onCategoryDropTargetChanged;
+  final ValueChanged<RadioStation> onCategoryDropAccepted;
 
   @override
   Widget build(BuildContext context) {
@@ -173,38 +161,66 @@ class _TopTabBar extends StatelessWidget {
             onTap: () => controller.selectTab(0),
           ),
         ),
-        ...List<Widget>.generate(visibleCategories.length, (index) {
-          final category = visibleCategories[index];
-          final tabIndex = index + 1;
-          final tab = _CompactTopTab(
-            icon: Icons.favorite_border,
-            selectedIcon: Icons.favorite,
-            label: _localizedCategoryName(context, category.name),
-            selected: selectedIndex == tabIndex,
+        Expanded(
+          child: _CategoriesTopTabDropTarget(
+            controller: controller,
+            selected: selectedIndex == 1,
             highlighted:
-                isDraggingDiscoverStation && favoriteDropTargetIndex == index,
-            onTap: () => controller.selectTab(tabIndex),
-          );
-
-          final target = DragTarget<RadioStation>(
-            onWillAcceptWithDetails: (details) {
-              final canAccept = !controller.isFavorite(
-                details.data.identityKey,
-                categoryId: category.id,
-              );
-              onFavoriteDropTargetChanged(canAccept ? index : null);
-              return canAccept;
-            },
-            onLeave: (_) => onFavoriteDropTargetChanged(null),
-            onAcceptWithDetails: (details) {
-              onFavoriteDropAccepted(details.data, index);
-            },
-            builder: (context, candidateData, rejectedData) => tab,
-          );
-
-          return Expanded(child: isDraggingDiscoverStation ? target : tab);
-        }),
+                isDraggingDiscoverStation && categoryDropTargetIndex == 0,
+            onCategoryDropTargetChanged: onCategoryDropTargetChanged,
+            onCategoryDropAccepted: onCategoryDropAccepted,
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _CategoriesTopTabDropTarget extends StatelessWidget {
+  const _CategoriesTopTabDropTarget({
+    required this.controller,
+    required this.selected,
+    required this.highlighted,
+    required this.onCategoryDropTargetChanged,
+    required this.onCategoryDropAccepted,
+  });
+
+  final RadioAppController controller;
+  final bool selected;
+  final bool highlighted;
+  final ValueChanged<int?> onCategoryDropTargetChanged;
+  final ValueChanged<RadioStation> onCategoryDropAccepted;
+
+  @override
+  Widget build(BuildContext context) {
+    final category = controller.activeStationCategory;
+    final tab = _CompactTopTab(
+      icon: Icons.library_music_outlined,
+      selectedIcon: Icons.library_music_rounded,
+      label: context.l10n.categories,
+      selected: selected,
+      highlighted: highlighted,
+      onTap: () => controller.selectTab(1),
+    );
+
+    if (!controller.isBootstrapping && controller.stationCategories.isEmpty) {
+      return tab;
+    }
+
+    return DragTarget<RadioStation>(
+      onWillAcceptWithDetails: (details) {
+        final canAccept = !controller.isStationInCategory(
+          details.data.identityKey,
+          categoryId: category.id,
+        );
+        onCategoryDropTargetChanged(canAccept ? 0 : null);
+        return canAccept;
+      },
+      onLeave: (_) => onCategoryDropTargetChanged(null),
+      onAcceptWithDetails: (details) {
+        onCategoryDropAccepted(details.data);
+      },
+      builder: (context, candidateData, rejectedData) => tab,
     );
   }
 }
@@ -275,21 +291,18 @@ class _Header extends StatefulWidget {
   const _Header({
     required this.controller,
     required this.selectedIndex,
-    required this.visibleCategories,
     required this.isDraggingDiscoverStation,
-    required this.favoriteDropTargetIndex,
-    required this.onFavoriteDropTargetChanged,
-    required this.onFavoriteDropAccepted,
+    required this.categoryDropTargetIndex,
+    required this.onCategoryDropTargetChanged,
+    required this.onCategoryDropAccepted,
   });
 
   final RadioAppController controller;
   final int selectedIndex;
-  final List<FavoriteCategory> visibleCategories;
   final bool isDraggingDiscoverStation;
-  final int? favoriteDropTargetIndex;
-  final ValueChanged<int?> onFavoriteDropTargetChanged;
-  final void Function(RadioStation station, int categoryIndex)
-  onFavoriteDropAccepted;
+  final int? categoryDropTargetIndex;
+  final ValueChanged<int?> onCategoryDropTargetChanged;
+  final ValueChanged<RadioStation> onCategoryDropAccepted;
 
   @override
   State<_Header> createState() => _HeaderState();
@@ -408,13 +421,12 @@ class _HeaderState extends State<_Header> {
                     child: _TopTabBar(
                       controller: controller,
                       selectedIndex: widget.selectedIndex,
-                      visibleCategories: widget.visibleCategories,
                       isDraggingDiscoverStation:
                           widget.isDraggingDiscoverStation,
-                      favoriteDropTargetIndex: widget.favoriteDropTargetIndex,
-                      onFavoriteDropTargetChanged:
-                          widget.onFavoriteDropTargetChanged,
-                      onFavoriteDropAccepted: widget.onFavoriteDropAccepted,
+                      categoryDropTargetIndex: widget.categoryDropTargetIndex,
+                      onCategoryDropTargetChanged:
+                          widget.onCategoryDropTargetChanged,
+                      onCategoryDropAccepted: widget.onCategoryDropAccepted,
                     ),
                   ),
                 ),
@@ -525,24 +537,25 @@ class _DiscoverTab extends StatelessWidget {
   }
 }
 
-class _FavoritesTab extends StatelessWidget {
-  const _FavoritesTab({required this.controller, required this.category});
+class _CategoriesTab extends StatelessWidget {
+  const _CategoriesTab({required this.controller});
 
   final RadioAppController controller;
-  final FavoriteCategory category;
 
   @override
   Widget build(BuildContext context) {
-    final stations = controller.favoritesForCategory(category.id);
+    final category = controller.activeStationCategory;
+    final stations = controller.stationsForCategory(category.id);
     final categoryName = _localizedCategoryName(context, category.name);
     return _StationTabContent(
       stationCount: stations.length,
+      header: _CategorySelector(controller: controller),
       child: _StationList(
         controller: controller,
         stations: stations,
-        emptyMessage: context.l10n.noFavoritesInCategory(categoryName),
+        emptyMessage: context.l10n.noStationsInCategory(categoryName),
         onReorder: (oldIndex, newIndex) {
-          controller.reorderFavorites(
+          controller.reorderCategoryStations(
             categoryId: category.id,
             oldIndex: oldIndex,
             newIndex: newIndex,
@@ -557,12 +570,14 @@ class _StationTabContent extends StatelessWidget {
   const _StationTabContent({
     required this.child,
     required this.stationCount,
+    this.header,
     this.isFiltered = false,
     this.onClearFilter,
   });
 
   final Widget child;
   final int stationCount;
+  final Widget? header;
   final bool isFiltered;
   final VoidCallback? onClearFilter;
 
@@ -583,6 +598,7 @@ class _StationTabContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
+          if (header != null) ...[header!, const SizedBox(height: 8)],
           Expanded(child: child),
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 6, 0, 10),
@@ -626,6 +642,47 @@ class _StationTabContent extends StatelessWidget {
                 : Center(child: countLabel),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CategorySelector extends StatelessWidget {
+  const _CategorySelector({required this.controller});
+
+  final RadioAppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = controller.stationCategories;
+    if (categories.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          final categoryName = _localizedCategoryName(context, category.name);
+          final stationCount = controller
+              .stationsForCategory(category.id)
+              .length;
+          return ChoiceChip(
+            selected: category.id == controller.activeStationCategoryId,
+            onSelected: (_) {
+              unawaited(controller.selectStationCategory(category.id));
+            },
+            label: Text(
+              '$categoryName ($stationCount)',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        },
       ),
     );
   }

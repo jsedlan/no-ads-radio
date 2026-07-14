@@ -1,26 +1,23 @@
 import 'dart:convert';
 
-class FavoriteCategory {
-  const FavoriteCategory({required this.id, required this.name});
+class StationCategory {
+  const StationCategory({required this.id, required this.name});
 
   final String id;
   final String name;
 
-  factory FavoriteCategory.fromStorage(String value, {required int index}) {
+  factory StationCategory.fromStorage(String value, {required int index}) {
     final trimmed = value.trim();
     if (trimmed.startsWith('{')) {
       try {
         final decoded = jsonDecode(trimmed);
         if (decoded is Map<String, dynamic>) {
-          final name = _readString(
-            decoded['name'],
-            fallback: 'Favorites',
-          ).trim();
+          final name = _readString(decoded['name'], fallback: 'Saved').trim();
           final fallbackId = idFromName(name, index: index);
           final id = _readString(decoded['id'], fallback: fallbackId).trim();
-          return FavoriteCategory(
+          return StationCategory(
             id: id.isEmpty ? fallbackId : id,
-            name: name.isEmpty ? 'Favorites' : name,
+            name: name.isEmpty ? 'Saved' : name,
           );
         }
       } on FormatException {
@@ -28,16 +25,16 @@ class FavoriteCategory {
       }
     }
 
-    final name = trimmed.isEmpty ? 'Favorites' : trimmed;
-    return FavoriteCategory(
+    final name = trimmed.isEmpty ? 'Saved' : trimmed;
+    return StationCategory(
       id: idFromName(name, index: index),
       name: name,
     );
   }
 
-  static FavoriteCategory create(String name, {required int index}) {
-    final normalizedName = name.trim().isEmpty ? 'Favorites' : name.trim();
-    return FavoriteCategory(
+  static StationCategory create(String name, {required int index}) {
+    final normalizedName = name.trim().isEmpty ? 'Saved' : name.trim();
+    return StationCategory(
       id: idFromName(normalizedName, index: index),
       name: normalizedName,
     );
@@ -49,11 +46,11 @@ class FavoriteCategory {
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
         .replaceAll(RegExp(r'^-+|-+$'), '');
-    return 'category-$index-${slug.isEmpty ? 'favorites' : slug}';
+    return 'category-$index-${slug.isEmpty ? 'saved' : slug}';
   }
 
-  FavoriteCategory copyWith({String? id, String? name}) {
-    return FavoriteCategory(id: id ?? this.id, name: name ?? this.name);
+  StationCategory copyWith({String? id, String? name}) {
+    return StationCategory(id: id ?? this.id, name: name ?? this.name);
   }
 
   Map<String, dynamic> toJson() {

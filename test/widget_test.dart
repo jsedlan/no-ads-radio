@@ -7,14 +7,14 @@ import 'package:no_ads_radio/l10n/app_localizations.dart';
 import 'package:no_ads_radio/src/app.dart';
 import 'package:no_ads_radio/src/audio/audio_engine.dart';
 import 'package:no_ads_radio/src/controllers/radio_app_controller.dart';
-import 'package:no_ads_radio/src/models/favorite_category.dart';
+import 'package:no_ads_radio/src/models/station_category.dart';
 import 'package:no_ads_radio/src/models/radio_station.dart';
 import 'package:no_ads_radio/src/models/search_query.dart';
 import 'package:no_ads_radio/src/services/connectivity_service.dart';
 import 'package:no_ads_radio/src/services/catalog_station_repository.dart';
 import 'package:no_ads_radio/src/services/cast_service.dart';
 import 'package:no_ads_radio/src/services/fallback_station_repository.dart';
-import 'package:no_ads_radio/src/services/favorites_store.dart';
+import 'package:no_ads_radio/src/services/category_stations_store.dart';
 import 'package:no_ads_radio/src/services/remote_json_station_repository.dart';
 import 'package:no_ads_radio/src/services/settings_store.dart';
 import 'package:no_ads_radio/src/services/station_catalog_json.dart';
@@ -55,7 +55,7 @@ void main() {
     );
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -95,10 +95,10 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('renders discover list and favorites flow', (tester) async {
+  testWidgets('renders discover list and saved flow', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -108,10 +108,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Test Station 1'), findsOneWidget);
-    await controller.toggleFavorite(controller.discoverStations.first);
+    await controller.toggleStationInCategory(controller.discoverStations.first);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Favorites'));
+    await tester.tap(find.text('Categories'));
     await tester.pumpAndSettle();
 
     expect(find.text('Test Station 1'), findsOneWidget);
@@ -124,7 +124,7 @@ void main() {
 
     expect(find.text('Theme'), findsOneWidget);
     expect(find.text('Recently played'), findsOneWidget);
-    await tester.drag(find.byType(ListView), const Offset(0, -300));
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
     expect(find.text('Show station icon'), findsOneWidget);
@@ -133,7 +133,7 @@ void main() {
   testWidgets('overflow menu opens about page', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -160,7 +160,7 @@ void main() {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -213,7 +213,7 @@ void main() {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -246,21 +246,19 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('only the canonical Favorites category is localized', (
-    tester,
-  ) async {
+  testWidgets('only the canonical Saved category is localized', (tester) async {
     final settingsStore = InMemorySettingsStore(
       const AppSettings(
         languagePreference: AppLanguagePreference.serbianLatin,
-        favoriteCategories: <FavoriteCategory>[
-          FavoriteCategory(id: 'favorites', name: 'Favorites'),
-          FavoriteCategory(id: 'rock', name: 'Rock'),
+        stationCategories: <StationCategory>[
+          StationCategory(id: 'saved', name: 'Saved'),
+          StationCategory(id: 'rock', name: 'Rock'),
         ],
       ),
     );
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -269,8 +267,8 @@ void main() {
     await tester.pumpWidget(NoAdsRadioApp(controller: controller));
     await tester.pumpAndSettle();
 
-    expect(find.text('Omiljene'), findsOneWidget);
-    expect(find.text('Rock'), findsOneWidget);
+    expect(find.text('Kategorije'), findsOneWidget);
+    expect(find.text('Rock'), findsNothing);
 
     await tester.tap(find.byIcon(Icons.more_vert_rounded));
     await tester.pumpAndSettle();
@@ -283,15 +281,71 @@ void main() {
         .widgetList<TextField>(find.byType(TextField))
         .map((field) => field.controller?.text)
         .toList(growable: false);
-    expect(categoryFields, containsAll(<String?>['Omiljene', 'Rock']));
+    expect(categoryFields, containsAll(<String?>['Sačuvane', 'Rock']));
 
     await tester.tap(find.text('Gotovo'));
     await tester.pumpAndSettle();
 
-    expect(controller.favoriteCategories[0].name, 'Favorites');
-    expect(controller.favoriteCategories[1].name, 'Rock');
+    expect(controller.stationCategories[0].name, 'Saved');
+    expect(controller.stationCategories[1].name, 'Rock');
 
     controller.dispose();
+  });
+
+  testWidgets('categories tab switches station categories', (tester) async {
+    final settingsStore = InMemorySettingsStore(
+      const AppSettings(
+        stationCategories: <StationCategory>[
+          StationCategory(id: 'saved', name: 'Saved'),
+          StationCategory(id: 'rock', name: 'Rock'),
+        ],
+      ),
+    );
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+    await controller.toggleStationInCategory(
+      controller.discoverStations.first,
+      categoryId: 'rock',
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Categories'), findsOneWidget);
+    expect(find.text('Saved'), findsNothing);
+    expect(find.text('Rock'), findsNothing);
+
+    await tester.tap(find.text('Categories'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Saved (0)'), findsOneWidget);
+    expect(find.text('Rock (1)'), findsOneWidget);
+    expect(find.text('Test Station 1'), findsNothing);
+
+    await tester.tap(find.text('Rock (1)'));
+    await tester.pumpAndSettle();
+
+    expect(controller.activeStationCategoryId, 'rock');
+    expect(settingsStore.settings.activeStationCategoryId, 'rock');
+    expect(find.text('Test Station 1'), findsOneWidget);
+
+    controller.dispose();
+
+    final reloadedController = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
+      settingsStore: settingsStore,
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+    expect(reloadedController.activeStationCategoryId, 'rock');
+
+    reloadedController.dispose();
   });
 
   testWidgets('station subtitles follow selected Serbian scripts', (
@@ -299,7 +353,7 @@ void main() {
   ) async {
     final latinController = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(
         const AppSettings(
           languagePreference: AppLanguagePreference.serbianLatin,
@@ -318,7 +372,7 @@ void main() {
 
     final cyrillicController = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(
         const AppSettings(
           languagePreference: AppLanguagePreference.serbianCyrillic,
@@ -341,7 +395,7 @@ void main() {
   ) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -375,7 +429,7 @@ void main() {
   ) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -400,7 +454,7 @@ void main() {
   testWidgets('tapping current station opens now playing', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -424,7 +478,7 @@ void main() {
     final audioEngine = FakeAudioEngine();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: audioEngine,
       connectivityService: FakeConnectivityService.online(),
@@ -455,7 +509,7 @@ void main() {
   ) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -483,7 +537,7 @@ void main() {
   testWidgets('station list filters as search text changes', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -533,7 +587,7 @@ void main() {
   test('controller records remote catalog load failure', () async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -557,7 +611,7 @@ void main() {
     () async {
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: InMemorySettingsStore(),
         audioEngine: FakeAudioEngine(),
         connectivityService: FakeConnectivityService.online(),
@@ -587,7 +641,7 @@ void main() {
       );
       final controller = await RadioAppController.bootstrap(
         repository: FakeCatalogStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: settingsStore,
         audioEngine: FakeAudioEngine(),
         connectivityService: FakeConnectivityService.online(),
@@ -735,7 +789,7 @@ void main() {
           'tags': 'folk',
         }),
       ),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -786,7 +840,7 @@ void main() {
             'state': 'Germany',
           }),
         ]),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: settingsStore,
         audioEngine: FakeAudioEngine(),
         connectivityService: FakeConnectivityService.online(),
@@ -825,7 +879,7 @@ void main() {
             'countrycode': '',
           }),
         ]),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: settingsStore,
         audioEngine: FakeAudioEngine(),
         connectivityService: FakeConnectivityService.online(),
@@ -853,7 +907,7 @@ void main() {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -876,7 +930,7 @@ void main() {
       final settingsStore = InMemorySettingsStore();
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: settingsStore,
         audioEngine: FakeAudioEngine(),
         connectivityService: FakeConnectivityService.online(),
@@ -904,7 +958,7 @@ void main() {
     final audioEngine = FakeAudioEngine();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: audioEngine,
       connectivityService: FakeConnectivityService.online(),
@@ -933,7 +987,7 @@ void main() {
   });
 
   test(
-    'controller advances to next favorite when stream retries keep failing',
+    'controller advances to next category when stream retries keep failing',
     () async {
       final audioEngine = FakeAudioEngine()
         ..failingUrls.addAll(<String>[
@@ -943,7 +997,7 @@ void main() {
         ]);
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: InMemorySettingsStore(),
         audioEngine: audioEngine,
         connectivityService: FakeConnectivityService.online(),
@@ -953,8 +1007,8 @@ void main() {
 
       final first = controller.discoverStations[0];
       final second = controller.discoverStations[1];
-      await controller.toggleFavorite(first);
-      await controller.toggleFavorite(second);
+      await controller.toggleStationInCategory(first);
+      await controller.toggleStationInCategory(second);
 
       await controller.playStation(first);
       await Future<void>.delayed(const Duration(milliseconds: 45));
@@ -972,7 +1026,7 @@ void main() {
     final castService = FakeCastService();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: audioEngine,
       castService: castService,
@@ -1003,7 +1057,7 @@ void main() {
     final castService = FakeCastService()..failLoading = true;
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: audioEngine,
       castService: castService,
@@ -1028,7 +1082,7 @@ void main() {
     final settingsStore = InMemorySettingsStore();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: settingsStore,
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -1046,85 +1100,94 @@ void main() {
     controller.dispose();
   });
 
-  test('controller reorders favorites and persists the order', () async {
-    final favoritesStore = InMemoryFavoritesStore();
+  test(
+    'controller reorders category stations and persists the order',
+    () async {
+      final categoryStationsStore = InMemoryCategoryStationsStore();
+      final controller = await RadioAppController.bootstrap(
+        repository: FakeStationRepository(),
+        categoryStationsStore: categoryStationsStore,
+        settingsStore: InMemorySettingsStore(),
+        audioEngine: FakeAudioEngine(),
+        connectivityService: FakeConnectivityService.online(),
+      );
+      final categoryId = controller.activeStationCategoryId;
+
+      await controller.toggleStationInCategory(controller.discoverStations[0]);
+      await controller.toggleStationInCategory(controller.discoverStations[1]);
+      await controller.toggleStationInCategory(controller.discoverStations[2]);
+
+      expect(
+        controller
+            .stationsForCategory(categoryId)
+            .map((station) => station.stationUuid),
+        <String>['station-2', 'station-1', 'station-0'],
+      );
+
+      await controller.reorderCategoryStations(
+        categoryId: categoryId,
+        oldIndex: 0,
+        newIndex: 3,
+      );
+
+      expect(
+        controller
+            .stationsForCategory(categoryId)
+            .map((station) => station.stationUuid),
+        <String>['station-1', 'station-0', 'station-2'],
+      );
+      expect(
+        (await categoryStationsStore.loadStationsByCategory())[categoryId]!.map(
+          (station) => station.stationUuid,
+        ),
+        <String>['station-1', 'station-0', 'station-2'],
+      );
+
+      controller.dispose();
+    },
+  );
+
+  test('category check without category searches all categories', () async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: favoritesStore,
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
     );
-    final categoryId = controller.activeFavoriteCategoryId;
-
-    await controller.toggleFavorite(controller.discoverStations[0]);
-    await controller.toggleFavorite(controller.discoverStations[1]);
-    await controller.toggleFavorite(controller.discoverStations[2]);
-
-    expect(
-      controller
-          .favoritesForCategory(categoryId)
-          .map((station) => station.stationUuid),
-      <String>['station-2', 'station-1', 'station-0'],
-    );
-
-    await controller.reorderFavorites(
-      categoryId: categoryId,
-      oldIndex: 0,
-      newIndex: 3,
-    );
-
-    expect(
-      controller
-          .favoritesForCategory(categoryId)
-          .map((station) => station.stationUuid),
-      <String>['station-1', 'station-0', 'station-2'],
-    );
-    expect(
-      (await favoritesStore.loadFavorites())[categoryId]!.map(
-        (station) => station.stationUuid,
-      ),
-      <String>['station-1', 'station-0', 'station-2'],
-    );
-
-    controller.dispose();
-  });
-
-  test('favorite check without category searches all categories', () async {
-    final controller = await RadioAppController.bootstrap(
-      repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
-      settingsStore: InMemorySettingsStore(),
-      audioEngine: FakeAudioEngine(),
-      connectivityService: FakeConnectivityService.online(),
-    );
-    await controller.setFavoriteCategories(<String>['Favorites', 'Other']);
-    final favoritesCategoryId = controller.favoriteCategories[0].id;
-    final otherCategoryId = controller.favoriteCategories[1].id;
+    await controller.setStationCategories(<String>['Saved', 'Other']);
+    final savedCategoryId = controller.stationCategories[0].id;
+    final otherCategoryId = controller.stationCategories[1].id;
     final station = controller.discoverStations.first;
 
-    await controller.toggleFavorite(station, categoryId: otherCategoryId);
+    await controller.toggleStationInCategory(
+      station,
+      categoryId: otherCategoryId,
+    );
 
-    expect(controller.isFavorite(station.stationUuid), isTrue);
+    expect(controller.isStationInCategory(station.stationUuid), isTrue);
     expect(
-      controller.isFavorite(
+      controller.isStationInCategory(
         station.stationUuid,
-        categoryId: favoritesCategoryId,
+        categoryId: savedCategoryId,
       ),
       isFalse,
     );
     expect(
-      controller.isFavorite(station.stationUuid, categoryId: otherCategoryId),
+      controller.isStationInCategory(
+        station.stationUuid,
+        categoryId: otherCategoryId,
+      ),
       isTrue,
     );
 
     controller.dispose();
   });
 
-  test('favorites distinguish stations with missing UUIDs', () async {
+  test('station categories distinguish stations with missing UUIDs', () async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -1138,15 +1201,15 @@ void main() {
       streamUrl: 'https://example.com/second',
     );
 
-    await controller.toggleFavorite(first);
+    await controller.toggleStationInCategory(first);
 
-    expect(controller.isFavorite(first.identityKey), isTrue);
-    expect(controller.isFavorite(second.identityKey), isFalse);
+    expect(controller.isStationInCategory(first.identityKey), isTrue);
+    expect(controller.isStationInCategory(second.identityKey), isFalse);
 
-    await controller.toggleFavorite(first);
+    await controller.toggleStationInCategory(first);
 
-    expect(controller.isFavorite(first.identityKey), isFalse);
-    expect(controller.isFavorite(second.identityKey), isFalse);
+    expect(controller.isStationInCategory(first.identityKey), isFalse);
+    expect(controller.isStationInCategory(second.identityKey), isFalse);
 
     controller.dispose();
   });
@@ -1156,7 +1219,7 @@ void main() {
     (tester) async {
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: InMemorySettingsStore(),
         audioEngine: FakeAudioEngine(),
         connectivityService: FakeConnectivityService.offline(),
@@ -1178,7 +1241,7 @@ void main() {
     final audioEngine = FakeAudioEngine();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: audioEngine,
       connectivityService: FakeConnectivityService.offline(),
@@ -1204,7 +1267,7 @@ void main() {
       final audioEngine = FakeAudioEngine();
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: InMemorySettingsStore(),
         audioEngine: audioEngine,
         connectivityService: FakeConnectivityService.online(),
@@ -1243,7 +1306,7 @@ void main() {
       final connectivityService = FakeConnectivityService.offline();
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: InMemorySettingsStore(),
         audioEngine: audioEngine,
         connectivityService: connectivityService,
@@ -1293,7 +1356,7 @@ void main() {
       final audioEngine = FakeAudioEngine();
       final controller = await RadioAppController.bootstrap(
         repository: FakeStationRepository(),
-        favoritesStore: InMemoryFavoritesStore(),
+        categoryStationsStore: InMemoryCategoryStationsStore(),
         settingsStore: InMemorySettingsStore(),
         audioEngine: audioEngine,
         connectivityService: FakeConnectivityService.online(),
@@ -1344,7 +1407,7 @@ void main() {
     final audioEngine = FakeAudioEngine();
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: audioEngine,
       connectivityService: FakeConnectivityService.online(),
@@ -1369,7 +1432,7 @@ void main() {
   testWidgets('custom sleep timer accepts 60 minutes', (tester) async {
     final controller = await RadioAppController.bootstrap(
       repository: FakeStationRepository(),
-      favoritesStore: InMemoryFavoritesStore(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
       settingsStore: InMemorySettingsStore(),
       audioEngine: FakeAudioEngine(),
       connectivityService: FakeConnectivityService.online(),
@@ -1557,18 +1620,19 @@ class RecordingHttpClient extends http.BaseClient {
   }
 }
 
-class InMemoryFavoritesStore implements FavoritesStore {
-  Map<String, List<RadioStation>> _favorites =
+class InMemoryCategoryStationsStore implements CategoryStationsStore {
+  Map<String, List<RadioStation>> _stationsByCategory =
       const <String, List<RadioStation>>{};
 
   @override
-  Future<Map<String, List<RadioStation>>> loadFavorites() async => _favorites;
+  Future<Map<String, List<RadioStation>>> loadStationsByCategory() async =>
+      _stationsByCategory;
 
   @override
-  Future<void> saveFavorites(
+  Future<void> saveStationsByCategory(
     Map<String, List<RadioStation>> stationsByCategory,
   ) async {
-    _favorites = Map<String, List<RadioStation>>.unmodifiable(
+    _stationsByCategory = Map<String, List<RadioStation>>.unmodifiable(
       stationsByCategory.map(
         (category, stations) =>
             MapEntry(category, List<RadioStation>.unmodifiable(stations)),

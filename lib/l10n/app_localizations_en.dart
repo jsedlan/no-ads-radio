@@ -95,14 +95,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutStationCatalogDescription =>
-      'Stations are loaded from the app catalog and can be filtered by country, saved as favorites, or added manually.';
+      'Stations are loaded from the app catalog and can be filtered by country, added to categories, or added manually.';
 
   @override
   String get aboutPrivacyTitle => 'Privacy-minded';
 
   @override
   String get aboutPrivacyDescription =>
-      'Settings, favorites, manual stations, and recently played stations are stored on this device.';
+      'Settings, categories, manual stations, and recently played stations are stored on this device.';
 
   @override
   String appVersion(Object version) {
@@ -184,8 +184,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stations => 'Stations';
 
   @override
-  String noFavoritesInCategory(Object category) {
-    return 'No favorites in $category yet. Save stations from Stations to build this category.';
+  String noStationsInCategory(Object category) {
+    return 'No stations in $category yet. Add stations from Stations to build this category.';
   }
 
   @override
@@ -198,7 +198,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nothingPlaying => 'Nothing is playing.';
 
   @override
-  String get previousFavorite => 'Previous favorite';
+  String get previousCategoryStation => 'Previous station in category';
 
   @override
   String get pause => 'Pause';
@@ -207,7 +207,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get play => 'Play';
 
   @override
-  String get nextFavorite => 'Next favorite';
+  String get nextCategoryStation => 'Next station in category';
 
   @override
   String get cast => 'Cast';
@@ -359,15 +359,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Display station artwork in lists and the player bar.';
 
   @override
-  String get autoPlayNextFavorite => 'Auto-play next favorite';
+  String get autoPlayNextCategoryStation => 'Auto-play next station';
 
   @override
-  String get autoPlayNextFavoriteDescription =>
-      'When a stream fails, move to the next favorite and wrap to the start.';
+  String get autoPlayNextCategoryStationDescription =>
+      'When a stream fails, move to the next station in its category and wrap to the start.';
 
   @override
-  String get autoPlayNextFavoriteDisabledDescription =>
-      'When a stream fails, move to the next favorite and wrap to the start. Add at least two favorites to enable this option.';
+  String get autoPlayNextCategoryStationDisabledDescription =>
+      'When a stream fails, move to the next station in its category and wrap to the start. Add at least two stations to a category to enable this option.';
 
   @override
   String get couldNotOpenAndroidSettings =>
@@ -378,10 +378,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoriesDescription =>
-      'Add as many categories as you like. Only the first 2 will be visible as tabs on the bottom.';
+      'Add as many categories as you like. The Categories tab opens the last category you used.';
 
   @override
-  String get favorites => 'Favorites';
+  String get savedCategory => 'Saved';
 
   @override
   String get newCategory => 'New category';
@@ -430,10 +430,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diaspora => 'Diaspora';
 
   @override
-  String get removeFavorite => 'Remove favorite';
+  String get removeFromCategory => 'Remove from category';
 
   @override
-  String get saveFavorite => 'Save favorite';
+  String get addToCategory => 'Add to category';
 
   @override
   String get unknown => 'Unknown';

@@ -55,14 +55,15 @@ class _SettingsViewState extends State<_SettingsView>
       animation: controller,
       builder: (context, _) {
         final theme = Theme.of(context);
-        final canCircleThroughFavorites = controller.canCircleThroughFavorites;
+        final canAutoPlayNextCategoryStation =
+            controller.canAutoPlayNextCategoryStation;
         final selectedCountriesSummary = _selectedCountriesSummary(
           context,
           controller.countryCodes,
         );
-        final categoriesSummary = _favoriteCategoriesSummary(
+        final categoriesSummary = _stationCategoriesSummary(
           context,
-          controller.favoriteCategories,
+          controller.stationCategories,
         );
 
         return ListView(
@@ -359,27 +360,31 @@ class _SettingsViewState extends State<_SettingsView>
             ),
             Card(
               child: CheckboxListTile(
-                value: controller.circleThroughFavorites,
-                onChanged: canCircleThroughFavorites
+                value: controller.autoPlayNextCategoryStation,
+                onChanged: canAutoPlayNextCategoryStation
                     ? (value) {
-                        controller.setCircleThroughFavorites(value ?? false);
+                        controller.setAutoPlayNextCategoryStation(
+                          value ?? false,
+                        );
                       }
                     : null,
                 title: Text(
-                  context.l10n.autoPlayNextFavorite,
+                  context.l10n.autoPlayNextCategoryStation,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: canCircleThroughFavorites
+                    color: canAutoPlayNextCategoryStation
                         ? null
                         : _disabledTextColor(context),
                   ),
                 ),
                 subtitle: Text(
-                  canCircleThroughFavorites
-                      ? context.l10n.autoPlayNextFavoriteDescription
-                      : context.l10n.autoPlayNextFavoriteDisabledDescription,
+                  canAutoPlayNextCategoryStation
+                      ? context.l10n.autoPlayNextCategoryStationDescription
+                      : context
+                            .l10n
+                            .autoPlayNextCategoryStationDisabledDescription,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: canCircleThroughFavorites
+                    color: canAutoPlayNextCategoryStation
                         ? _mutedTextColor(context)
                         : _disabledTextColor(context),
                   ),

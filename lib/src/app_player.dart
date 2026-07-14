@@ -441,10 +441,10 @@ class _NowPlayingBody extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _LargePlaybackButton(
-              tooltip: context.l10n.previousFavorite,
+              tooltip: context.l10n.previousCategoryStation,
               icon: Icons.skip_previous_rounded,
-              onPressed: controller.canPlayAdjacentFavorite
-                  ? controller.playPreviousFavorite
+              onPressed: controller.canPlayAdjacentCategoryStation
+                  ? controller.playPreviousCategoryStation
                   : null,
             ),
             const SizedBox(width: 18),
@@ -464,10 +464,10 @@ class _NowPlayingBody extends StatelessWidget {
             ),
             const SizedBox(width: 18),
             _LargePlaybackButton(
-              tooltip: context.l10n.nextFavorite,
+              tooltip: context.l10n.nextCategoryStation,
               icon: Icons.skip_next_rounded,
-              onPressed: controller.canPlayAdjacentFavorite
-                  ? controller.playNextFavorite
+              onPressed: controller.canPlayAdjacentCategoryStation
+                  ? controller.playNextCategoryStation
                   : null,
             ),
           ],

@@ -12,18 +12,18 @@ class _CategoriesPage extends StatefulWidget {
 class _CategoriesPageState extends State<_CategoriesPage> {
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
-  late final List<FavoriteCategory> _categories;
+  late final List<StationCategory> _categories;
   bool _didLocalizeDefaultCategory = false;
 
   @override
   void initState() {
     super.initState();
-    final categories = widget.controller.favoriteCategories.isEmpty
-        ? const <FavoriteCategory>[
-            FavoriteCategory(id: 'category-0-favorites', name: 'Favorites'),
+    final categories = widget.controller.stationCategories.isEmpty
+        ? const <StationCategory>[
+            StationCategory(id: 'category-0-saved', name: 'Saved'),
           ]
-        : widget.controller.favoriteCategories;
-    _categories = List<FavoriteCategory>.from(categories, growable: true);
+        : widget.controller.stationCategories;
+    _categories = List<StationCategory>.from(categories, growable: true);
     _controllers = categories
         .map((category) => TextEditingController(text: category.name))
         .toList(growable: true);
@@ -53,8 +53,8 @@ class _CategoriesPageState extends State<_CategoriesPage> {
     }
     _didLocalizeDefaultCategory = true;
     for (var index = 0; index < _categories.length; index += 1) {
-      if (_categories[index].name.trim() == 'Favorites') {
-        _controllers[index].text = context.l10n.favorites;
+      if (_categories[index].name.trim() == 'Saved') {
+        _controllers[index].text = context.l10n.savedCategory;
       }
     }
   }
@@ -62,7 +62,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
   void _addCategory() {
     setState(() {
       _categories.add(
-        FavoriteCategory(
+        StationCategory(
           id: 'category-${DateTime.now().microsecondsSinceEpoch}-${_categories.length}',
           name: '',
         ),
@@ -86,19 +86,17 @@ class _CategoriesPageState extends State<_CategoriesPage> {
   }
 
   Future<void> _saveAndClose() async {
-    final values = List<FavoriteCategory>.generate(_controllers.length, (
-      index,
-    ) {
+    final values = List<StationCategory>.generate(_controllers.length, (index) {
       final originalName = _categories[index].name.trim();
       final editedName = _controllers[index].text.trim();
       return _categories[index].copyWith(
         name:
-            originalName == 'Favorites' && editedName == context.l10n.favorites
-            ? 'Favorites'
+            originalName == 'Saved' && editedName == context.l10n.savedCategory
+            ? 'Saved'
             : editedName,
       );
     }, growable: false);
-    await widget.controller.setFavoriteCategoryItems(values);
+    await widget.controller.setStationCategoryItems(values);
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -173,7 +171,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
                                       : TextInputAction.next,
                                   decoration: InputDecoration(
                                     hintText: index == 0
-                                        ? context.l10n.favorites
+                                        ? context.l10n.savedCategory
                                         : context.l10n.newCategory,
                                     suffixIcon: IconButton(
                                       onPressed: () => _removeCategory(index),

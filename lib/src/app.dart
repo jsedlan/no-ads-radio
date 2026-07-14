@@ -7,7 +7,7 @@ import 'package:no_ads_radio/l10n/app_localizations.dart';
 
 import 'audio/audio_engine.dart';
 import 'controllers/radio_app_controller.dart';
-import 'models/favorite_category.dart';
+import 'models/station_category.dart';
 import 'models/radio_station.dart';
 import 'services/android_settings_launcher.dart';
 import 'services/cast_service.dart';
