@@ -390,7 +390,13 @@ class AppLocalizationsSr extends AppLocalizations {
   String get savedCategory => 'Сачуване';
 
   @override
+  String get chooseCategory => 'Изаберите категорију';
+
+  @override
   String get newCategory => 'Нова категорија';
+
+  @override
+  String get manageCategories => 'Уреди категорије';
 
   @override
   String get removeCategory => 'Уклони категорију';
@@ -1616,7 +1622,13 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get savedCategory => 'Sačuvane';
 
   @override
+  String get chooseCategory => 'Izaberite kategoriju';
+
+  @override
   String get newCategory => 'Nova kategorija';
+
+  @override
+  String get manageCategories => 'Uredi kategorije';
 
   @override
   String get removeCategory => 'Ukloni kategoriju';

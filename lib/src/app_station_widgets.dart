@@ -610,20 +610,6 @@ String _localizedCategoryName(BuildContext context, String categoryName) {
   return normalized == 'Saved' ? context.l10n.savedCategory : normalized;
 }
 
-String _stationCategoriesSummary(
-  BuildContext context,
-  List<StationCategory> categories,
-) {
-  final normalized = categories
-      .map((category) => _localizedCategoryName(context, category.name))
-      .where((value) => value.isNotEmpty)
-      .toList(growable: false);
-  if (normalized.isEmpty) {
-    return context.l10n.savedCategory;
-  }
-  return normalized.join(', ');
-}
-
 List<_CountryOption> _countryOptionsForCodes(List<String> countryCodes) {
   final selectedCodes = countryCodes
       .map((value) => value.trim().toUpperCase())

@@ -735,11 +735,23 @@ abstract class AppLocalizations {
   /// **'Saved'**
   String get savedCategory;
 
+  /// No description provided for @chooseCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose category'**
+  String get chooseCategory;
+
   /// No description provided for @newCategory.
   ///
   /// In en, this message translates to:
   /// **'New category'**
   String get newCategory;
+
+  /// No description provided for @manageCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage categories'**
+  String get manageCategories;
 
   /// No description provided for @removeCategory.
   ///

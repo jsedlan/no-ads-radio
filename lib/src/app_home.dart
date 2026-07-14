@@ -661,28 +661,138 @@ class _CategorySelector extends StatelessWidget {
 
     return SizedBox(
       height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final categoryName = _localizedCategoryName(context, category.name);
-          final stationCount = controller
-              .stationsForCategory(category.id)
-              .length;
-          return ChoiceChip(
-            selected: category.id == controller.activeStationCategoryId,
-            onSelected: (_) {
-              unawaited(controller.selectStationCategory(category.id));
-            },
-            label: Text(
-              '$categoryName ($stationCount)',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+      child: Row(
+        children: [
+          Flexible(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _SelectedCategoryButton(
+                controller: controller,
+                onTap: () => _showCategoryPicker(context),
+              ),
             ),
-          );
-        },
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => _CategoriesPage(controller: controller),
+                ),
+              );
+            },
+            icon: const Icon(Icons.tune_rounded),
+            tooltip: context.l10n.manageCategories,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCategoryPicker(BuildContext context) async {
+    final selectedCategoryId = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final categories = controller.stationCategories;
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                child: Text(
+                  context.l10n.chooseCategory,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              ...categories.map((category) {
+                final isSelected =
+                    category.id == controller.activeStationCategoryId;
+                final stationCount = controller
+                    .stationsForCategory(category.id)
+                    .length;
+                return ListTile(
+                  selected: isSelected,
+                  leading: Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                  ),
+                  title: Text(_localizedCategoryName(context, category.name)),
+                  subtitle: Text(context.l10n.stationCount(stationCount)),
+                  onTap: () => Navigator.of(context).pop(category.id),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selectedCategoryId == null) {
+      return;
+    }
+
+    await controller.selectStationCategory(selectedCategoryId);
+  }
+}
+
+class _SelectedCategoryButton extends StatelessWidget {
+  const _SelectedCategoryButton({
+    required this.controller,
+    required this.onTap,
+  });
+
+  final RadioAppController controller;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final category = controller.activeStationCategory;
+    final categoryName = _localizedCategoryName(context, category.name);
+    final foregroundColor = theme.colorScheme.onSecondaryContainer;
+    final shape = StadiumBorder(
+      side: BorderSide(
+        color: theme.colorScheme.secondary.withValues(alpha: 0.35),
+      ),
+    );
+    return Material(
+      color: theme.colorScheme.secondaryContainer,
+      shape: shape,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: shape,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  categoryName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 20,
+                color: foregroundColor,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

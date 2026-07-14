@@ -384,7 +384,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get savedCategory => 'Saved';
 
   @override
+  String get chooseCategory => 'Choose category';
+
+  @override
   String get newCategory => 'New category';
+
+  @override
+  String get manageCategories => 'Manage categories';
 
   @override
   String get removeCategory => 'Remove category';

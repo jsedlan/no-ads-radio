@@ -270,11 +270,9 @@ void main() {
     expect(find.text('Kategorije'), findsOneWidget);
     expect(find.text('Rock'), findsNothing);
 
-    await tester.tap(find.byIcon(Icons.more_vert_rounded));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Podešavanja').last);
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Kategorije'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Uredi kategorije'));
     await tester.pumpAndSettle();
 
     final categoryFields = tester
@@ -323,11 +321,19 @@ void main() {
     await tester.tap(find.text('Categories'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Saved (0)'), findsOneWidget);
-    expect(find.text('Rock (1)'), findsOneWidget);
+    expect(find.text('Saved'), findsOneWidget);
+    expect(find.text('0 stations'), findsWidgets);
+    expect(find.text('Rock'), findsNothing);
     expect(find.text('Test Station 1'), findsNothing);
 
-    await tester.tap(find.text('Rock (1)'));
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose category'), findsOneWidget);
+    expect(find.text('Rock'), findsOneWidget);
+    expect(find.text('1 station'), findsOneWidget);
+
+    await tester.tap(find.text('Rock'));
     await tester.pumpAndSettle();
 
     expect(controller.activeStationCategoryId, 'rock');
@@ -346,6 +352,31 @@ void main() {
     expect(reloadedController.activeStationCategoryId, 'rock');
 
     reloadedController.dispose();
+  });
+
+  testWidgets('categories tab opens category management', (tester) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Categories'));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Add category'), findsNothing);
+
+    await tester.tap(find.byTooltip('Manage categories'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add category'), findsOneWidget);
+
+    controller.dispose();
   });
 
   testWidgets('station subtitles follow selected Serbian scripts', (

@@ -61,11 +61,6 @@ class _SettingsViewState extends State<_SettingsView>
           context,
           controller.countryCodes,
         );
-        final categoriesSummary = _stationCategoriesSummary(
-          context,
-          controller.stationCategories,
-        );
-
         return ListView(
           children: [
             Card(
@@ -179,35 +174,6 @@ class _SettingsViewState extends State<_SettingsView>
                       },
                     ),
                   ],
-                ),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) =>
-                          _CategoriesPage(controller: controller),
-                    ),
-                  );
-                },
-                title: Text(
-                  context.l10n.categories,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                subtitle: Text(
-                  categoriesSummary,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: _mutedTextColor(context),
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
                 ),
               ),
             ),
