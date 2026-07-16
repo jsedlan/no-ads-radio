@@ -186,7 +186,7 @@ class RadioAppController extends ChangeNotifier {
   String discoverFilter = '';
   AppThemePreference themePreference = AppThemePreference.dark;
   AppLanguagePreference languagePreference = AppLanguagePreference.system;
-  bool showStationIcon = false;
+  bool showStationIcon = true;
   bool autoPlayNextCategoryStation = true;
   List<String> countryCodes = const <String>[];
   List<StationCategory> stationCategories = const <StationCategory>[

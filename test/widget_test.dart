@@ -154,6 +154,10 @@ void main() {
     expect(controller.selectedTab, 2);
     expect(find.text('Test Station 1'), findsWidgets);
     expect(find.byIcon(Icons.delete_sweep_rounded), findsOneWidget);
+    expect(
+      tester.getCenter(find.text('Clear')).dx,
+      greaterThan(tester.getCenter(find.text('1 station')).dx),
+    );
 
     await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
@@ -1035,14 +1039,14 @@ void main() {
     );
 
     expect(controller.themePreference, AppThemePreference.dark);
-    expect(controller.showStationIcon, isFalse);
+    expect(controller.showStationIcon, isTrue);
 
     await controller.setThemePreference(AppThemePreference.light);
-    await controller.setShowStationIcon(true);
+    await controller.setShowStationIcon(false);
 
     final reloaded = await settingsStore.loadSettings();
     expect(reloaded.themePreference, AppThemePreference.light);
-    expect(reloaded.showStationIcon, isTrue);
+    expect(reloaded.showStationIcon, isFalse);
   });
 
   test(

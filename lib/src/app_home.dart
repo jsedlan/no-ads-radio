@@ -542,20 +542,22 @@ class _RecentTab extends StatelessWidget {
     final stations = controller.recentlyPlayedStations;
     return _StationTabContent(
       stationCount: stations.length,
-      header: stations.isEmpty
+      statusAction: stations.isEmpty
           ? null
-          : Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: controller.clearRecentlyPlayed,
-                icon: Icon(
-                  Icons.delete_sweep_rounded,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                label: Text(
-                  context.l10n.clear,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+          : TextButton.icon(
+              onPressed: controller.clearRecentlyPlayed,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+              ),
+              icon: Icon(
+                Icons.delete_sweep_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              label: Text(
+                context.l10n.clear,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
       child: _StationList(
@@ -573,12 +575,14 @@ class _StationTabContent extends StatelessWidget {
     required this.stationCount,
     this.header,
     this.isFiltered = false,
+    this.statusAction,
   });
 
   final Widget child;
   final int stationCount;
   final Widget? header;
   final bool isFiltered;
+  final Widget? statusAction;
 
   @override
   Widget build(BuildContext context) {
@@ -601,7 +605,14 @@ class _StationTabContent extends StatelessWidget {
           Expanded(child: child),
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 6, 0, 10),
-            child: Center(child: countLabel),
+            child: statusAction == null
+                ? Center(child: countLabel)
+                : Row(
+                    children: [
+                      Expanded(child: countLabel),
+                      statusAction!,
+                    ],
+                  ),
           ),
         ],
       ),

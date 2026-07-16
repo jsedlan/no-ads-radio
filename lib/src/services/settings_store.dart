@@ -35,7 +35,7 @@ class AppSettings {
   const AppSettings({
     this.themePreference = AppThemePreference.dark,
     this.languagePreference = AppLanguagePreference.system,
-    this.showStationIcon = false,
+    this.showStationIcon = true,
     this.autoPlayNextCategoryStation = true,
     this.countryCodes = const <String>[],
     this.hasCompletedCountrySetup = true,
@@ -125,7 +125,7 @@ class SharedPreferencesSettingsStore implements SettingsStore {
       languagePreference: AppLanguagePreference.fromStorage(
         _preferences.getString(_languagePreferenceKey),
       ),
-      showStationIcon: _preferences.getBool(_showStationIconKey) ?? false,
+      showStationIcon: _preferences.getBool(_showStationIconKey) ?? true,
       autoPlayNextCategoryStation:
           _preferences.getBool(_autoPlayNextCategoryStationKey) ?? true,
       countryCodes: List<String>.unmodifiable(countryCodes),
