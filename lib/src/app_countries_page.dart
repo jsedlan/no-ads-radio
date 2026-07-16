@@ -117,13 +117,6 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              context.l10n.dragToReorder,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: _mutedTextColor(context),
-                              ),
-                            ),
                             const SizedBox(height: 12),
                             Align(
                               alignment: Alignment.centerLeft,
@@ -136,22 +129,8 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                             const SizedBox(height: 12),
                             SizedBox(
                               height: selectedListHeight.toDouble(),
-                              child: ReorderableListView.builder(
-                                buildDefaultDragHandles: false,
+                              child: ListView.builder(
                                 itemCount: selectedOptions.length,
-                                onReorder: (oldIndex, newIndex) {
-                                  setState(() {
-                                    if (newIndex > oldIndex) {
-                                      newIndex -= 1;
-                                    }
-                                    final moved = _selectedCountryCodes
-                                        .removeAt(oldIndex);
-                                    _selectedCountryCodes.insert(
-                                      newIndex,
-                                      moved,
-                                    );
-                                  });
-                                },
                                 itemBuilder: (context, index) {
                                   final option = selectedOptions[index];
                                   final canRemove =
@@ -160,16 +139,10 @@ class _DiscoverCountriesPageState extends State<_DiscoverCountriesPage> {
                                     key: ValueKey(option.code),
                                     children: [
                                       Expanded(
-                                        child: ReorderableDragStartListener(
-                                          index: index,
-                                          child: ListTile(
-                                            contentPadding: EdgeInsets.zero,
-                                            title: Text(option.name),
-                                            subtitle: Text(option.code),
-                                            trailing: const Icon(
-                                              Icons.drag_handle_rounded,
-                                            ),
-                                          ),
+                                        child: ListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          title: Text(option.name),
+                                          subtitle: Text(option.code),
                                         ),
                                       ),
                                       InkResponse(

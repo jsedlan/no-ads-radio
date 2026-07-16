@@ -884,6 +884,57 @@ void main() {
     },
   );
 
+  testWidgets('selected station countries scroll without reordering', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
+      settingsStore: InMemorySettingsStore(
+        const AppSettings(countryCodes: <String>['RS', 'HR', 'SI', 'ME', 'BA']),
+      ),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings').last);
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Station countries'));
+    await tester.pumpAndSettle();
+
+    final selectedCountriesCard = find.widgetWithText(
+      Card,
+      'Selected countries',
+    );
+    final selectedCountriesList = find.descendant(
+      of: selectedCountriesCard,
+      matching: find.byType(ListView),
+    );
+    expect(selectedCountriesList, findsOneWidget);
+    expect(find.byType(ReorderableListView), findsNothing);
+    expect(find.byIcon(Icons.drag_handle_rounded), findsNothing);
+
+    final scrollable = find.descendant(
+      of: selectedCountriesList,
+      matching: find.byType(Scrollable),
+    );
+    expect(tester.state<ScrollableState>(scrollable).position.pixels, 0);
+    await tester.drag(selectedCountriesList, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      greaterThan(0),
+    );
+
+    controller.dispose();
+  });
+
   test(
     'country setting changes reload discover stations immediately',
     () async {
