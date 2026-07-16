@@ -108,8 +108,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Test Station 1'), findsOneWidget);
+    expect(find.byIcon(Icons.bookmark_border_rounded), findsNWidgets(4));
     await controller.toggleStationInCategory(controller.discoverStations.first);
     await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
 
     await tester.tap(find.text('Categories'));
     await tester.pumpAndSettle();

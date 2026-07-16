@@ -336,8 +336,8 @@ class _StationTile extends StatelessWidget {
               onPressed: () => controller.toggleStationInCategory(station),
               icon: Icon(
                 isStationInCategory
-                    ? Icons.playlist_add_check_rounded
-                    : Icons.playlist_add_rounded,
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_border_rounded,
                 color: isStationInCategory ? theme.colorScheme.onSurface : null,
               ),
             ),
