@@ -62,16 +62,16 @@ class AppLocalizationsSr extends AppLocalizations {
   String get continueLabel => 'Настави';
 
   @override
-  String get filter => 'Филтрирај';
+  String get filter => 'Претрага';
 
   @override
-  String get clearFilter => 'Обриши филтер';
+  String get clearFilter => 'Обриши претрагу';
 
   @override
   String get offline => 'Ван мреже';
 
   @override
-  String get filterStations => 'Филтрирај станице';
+  String get filterStations => 'Претражи станице';
 
   @override
   String get more => 'Више';
@@ -1296,16 +1296,16 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
   String get continueLabel => 'Nastavi';
 
   @override
-  String get filter => 'Filtriraj';
+  String get filter => 'Pretraga';
 
   @override
-  String get clearFilter => 'Obriši filter';
+  String get clearFilter => 'Obriši pretragu';
 
   @override
   String get offline => 'Van mreže';
 
   @override
-  String get filterStations => 'Filtriraj stanice';
+  String get filterStations => 'Pretraži stanice';
 
   @override
   String get more => 'Više';

@@ -586,14 +586,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1 filtered station'), findsOneWidget);
-    expect(find.byTooltip('Clear filter'), findsOneWidget);
+    expect(find.byTooltip('Clear search'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Clear filter'));
+    await tester.tap(find.byTooltip('Clear search'));
     await tester.pumpAndSettle();
 
     expect(controller.discoverFilter, isEmpty);
     expect(find.text('4 stations'), findsOneWidget);
-    expect(find.byTooltip('Clear filter'), findsNothing);
+    expect(find.byTooltip('Clear search'), findsNothing);
 
     controller.dispose();
   });
@@ -610,10 +610,16 @@ void main() {
     await tester.pumpWidget(NoAdsRadioApp(controller: controller));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Filter stations'));
+    final searchField = find.byType(TextField);
+    expect(searchField, findsOneWidget);
+    expect(find.text('Search'), findsOneWidget);
+    expect(tester.widget<TextField>(searchField).focusNode?.hasFocus, isFalse);
+    await tester.tap(find.text('Categories'));
+    await tester.pumpAndSettle();
+    expect(searchField, findsNothing);
+    await tester.tap(find.text('Stations'));
     await tester.pumpAndSettle();
 
-    final searchField = find.byType(TextField);
     await tester.enterText(searchField, 'Test Station');
     await tester.pump();
 

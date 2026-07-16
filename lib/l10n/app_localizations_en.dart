@@ -62,16 +62,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get continueLabel => 'Continue';
 
   @override
-  String get filter => 'Filter';
+  String get filter => 'Search';
 
   @override
-  String get clearFilter => 'Clear filter';
+  String get clearFilter => 'Clear search';
 
   @override
   String get offline => 'Offline';
 
   @override
-  String get filterStations => 'Filter stations';
+  String get filterStations => 'Search stations';
 
   @override
   String get more => 'More';

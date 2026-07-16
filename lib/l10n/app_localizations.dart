@@ -204,13 +204,13 @@ abstract class AppLocalizations {
   /// No description provided for @filter.
   ///
   /// In en, this message translates to:
-  /// **'Filter'**
+  /// **'Search'**
   String get filter;
 
   /// No description provided for @clearFilter.
   ///
   /// In en, this message translates to:
-  /// **'Clear filter'**
+  /// **'Clear search'**
   String get clearFilter;
 
   /// No description provided for @offline.
@@ -222,7 +222,7 @@ abstract class AppLocalizations {
   /// No description provided for @filterStations.
   ///
   /// In en, this message translates to:
-  /// **'Filter stations'**
+  /// **'Search stations'**
   String get filterStations;
 
   /// No description provided for @more.

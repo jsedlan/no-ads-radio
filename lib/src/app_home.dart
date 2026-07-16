@@ -297,7 +297,7 @@ class _CompactTopTab extends StatelessWidget {
   }
 }
 
-class _Header extends StatefulWidget {
+class _Header extends StatelessWidget {
   const _Header({
     required this.controller,
     required this.selectedIndex,
@@ -315,102 +315,6 @@ class _Header extends StatefulWidget {
   final ValueChanged<RadioStation> onCategoryDropAccepted;
 
   @override
-  State<_Header> createState() => _HeaderState();
-}
-
-class _HeaderState extends State<_Header> {
-  late final TextEditingController _discoverFilterController;
-  late final FocusNode _discoverFilterFocusNode;
-  bool _isSearchExpanded = false;
-
-  RadioAppController get controller => widget.controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _discoverFilterController = TextEditingController(
-      text: controller.discoverFilter,
-    );
-    _discoverFilterFocusNode = FocusNode();
-  }
-
-  @override
-  void didUpdateWidget(covariant _Header oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!_isSearchExpanded &&
-        _discoverFilterController.text != controller.discoverFilter) {
-      _discoverFilterController.value = TextEditingValue(
-        text: controller.discoverFilter,
-        selection: TextSelection.collapsed(
-          offset: controller.discoverFilter.length,
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _discoverFilterController.dispose();
-    _discoverFilterFocusNode.dispose();
-    super.dispose();
-  }
-
-  void _expandSearch() {
-    setState(() {
-      _isSearchExpanded = true;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _discoverFilterFocusNode.requestFocus();
-      }
-    });
-  }
-
-  void _submitSearch([String? value]) {
-    controller.setDiscoverFilter(value ?? _discoverFilterController.text);
-    controller.selectTab(0);
-    setState(() {
-      _isSearchExpanded = false;
-    });
-    _discoverFilterFocusNode.unfocus();
-  }
-
-  void _clearSearch() {
-    if (_discoverFilterController.text.isNotEmpty) {
-      _discoverFilterController.clear();
-      controller.setDiscoverFilter('');
-      return;
-    }
-
-    _discoverFilterController.clear();
-    controller.setDiscoverFilter('');
-    setState(() {
-      _isSearchExpanded = false;
-    });
-    _discoverFilterFocusNode.unfocus();
-  }
-
-  Widget _buildSearchField() {
-    return TextField(
-      controller: _discoverFilterController,
-      focusNode: _discoverFilterFocusNode,
-      textInputAction: TextInputAction.search,
-      onChanged: controller.setDiscoverFilter,
-      onSubmitted: _submitSearch,
-      decoration: InputDecoration(
-        hintText: context.l10n.filter,
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: IconButton(
-          onPressed: _clearSearch,
-          icon: const Icon(Icons.close_rounded),
-          tooltip: context.l10n.clearFilter,
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
@@ -420,73 +324,55 @@ class _HeaderState extends State<_Header> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (_isSearchExpanded)
-                Expanded(
-                  child: SizedBox(height: 48, child: _buildSearchField()),
-                )
-              else ...[
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: _TopTabBar(
-                      controller: controller,
-                      selectedIndex: widget.selectedIndex,
-                      isDraggingDiscoverStation:
-                          widget.isDraggingDiscoverStation,
-                      categoryDropTargetIndex: widget.categoryDropTargetIndex,
-                      onCategoryDropTargetChanged:
-                          widget.onCategoryDropTargetChanged,
-                      onCategoryDropAccepted: widget.onCategoryDropAccepted,
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: _TopTabBar(
+                    controller: controller,
+                    selectedIndex: selectedIndex,
+                    isDraggingDiscoverStation: isDraggingDiscoverStation,
+                    categoryDropTargetIndex: categoryDropTargetIndex,
+                    onCategoryDropTargetChanged: onCategoryDropTargetChanged,
+                    onCategoryDropAccepted: onCategoryDropAccepted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Transform.translate(
+                offset: const Offset(0, -7),
+                child: PopupMenuButton<_HeaderAction>(
+                  tooltip: context.l10n.more,
+                  icon: const Icon(Icons.more_vert_rounded),
+                  color: theme.cardTheme.color,
+                  onSelected: (value) {
+                    switch (value) {
+                      case _HeaderAction.settings:
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) =>
+                                _SettingsPage(controller: controller),
+                          ),
+                        );
+                      case _HeaderAction.about:
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (context) => const _AboutPage(),
+                          ),
+                        );
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem<_HeaderAction>(
+                      value: _HeaderAction.settings,
+                      child: Text(context.l10n.settings),
                     ),
-                  ),
+                    PopupMenuItem<_HeaderAction>(
+                      value: _HeaderAction.about,
+                      child: Text(context.l10n.about),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Transform.translate(
-                  offset: const Offset(0, -7),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: _expandSearch,
-                        icon: const Icon(Icons.search_rounded),
-                        tooltip: context.l10n.filterStations,
-                      ),
-                      PopupMenuButton<_HeaderAction>(
-                        tooltip: context.l10n.more,
-                        icon: const Icon(Icons.more_vert_rounded),
-                        color: theme.cardTheme.color,
-                        onSelected: (value) {
-                          switch (value) {
-                            case _HeaderAction.settings:
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (context) =>
-                                      _SettingsPage(controller: controller),
-                                ),
-                              );
-                            case _HeaderAction.about:
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (context) => const _AboutPage(),
-                                ),
-                              );
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem<_HeaderAction>(
-                            value: _HeaderAction.settings,
-                            child: Text(context.l10n.settings),
-                          ),
-                          PopupMenuItem<_HeaderAction>(
-                            value: _HeaderAction.about,
-                            child: Text(context.l10n.about),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
           if (controller.discoverError != null)
@@ -509,7 +395,7 @@ class _HeaderState extends State<_Header> {
 
 enum _HeaderAction { settings, about }
 
-class _DiscoverTab extends StatelessWidget {
+class _DiscoverTab extends StatefulWidget {
   const _DiscoverTab({
     required this.controller,
     required this.onDragStateChanged,
@@ -517,6 +403,76 @@ class _DiscoverTab extends StatelessWidget {
 
   final RadioAppController controller;
   final ValueChanged<bool> onDragStateChanged;
+
+  @override
+  State<_DiscoverTab> createState() => _DiscoverTabState();
+}
+
+class _DiscoverTabState extends State<_DiscoverTab> {
+  late final TextEditingController _filterController;
+  late final FocusNode _filterFocusNode;
+
+  RadioAppController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _filterController = TextEditingController(text: controller.discoverFilter);
+    _filterFocusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DiscoverTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_filterController.text != controller.discoverFilter) {
+      _filterController.text = controller.discoverFilter;
+    }
+  }
+
+  @override
+  void dispose() {
+    _filterController.dispose();
+    _filterFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _submitSearch(String value) {
+    controller.setDiscoverFilter(value);
+    _filterFocusNode.unfocus();
+  }
+
+  void _clearSearch() {
+    _filterController.clear();
+    controller.setDiscoverFilter('');
+  }
+
+  Widget _buildSearchControl(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _filterController,
+        focusNode: _filterFocusNode,
+        textInputAction: TextInputAction.search,
+        onChanged: controller.setDiscoverFilter,
+        onSubmitted: _submitSearch,
+        decoration: InputDecoration(
+          hintText: context.l10n.filter,
+          isDense: true,
+          prefixIcon: const Icon(Icons.search_rounded, size: 20),
+          prefixIconConstraints: const BoxConstraints(minWidth: 40),
+          suffixIcon: controller.discoverFilter.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: _clearSearch,
+                  icon: const Icon(Icons.close_rounded),
+                  tooltip: context.l10n.clearFilter,
+                ),
+          suffixIconConstraints: const BoxConstraints(minWidth: 40),
+          contentPadding: const EdgeInsets.symmetric(vertical: 6),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -530,8 +486,8 @@ class _DiscoverTab extends StatelessWidget {
 
     return _StationTabContent(
       stationCount: stations.length,
+      header: _buildSearchControl(context),
       isFiltered: controller.discoverFilter.trim().isNotEmpty,
-      onClearFilter: () => controller.setDiscoverFilter(''),
       child: RefreshIndicator(
         onRefresh: controller.refreshDiscover,
         child: _StationList(
@@ -540,7 +496,7 @@ class _DiscoverTab extends StatelessWidget {
           isLoading: controller.isRefreshingDiscover,
           emptyMessage: context.l10n.noStationsAvailable,
           draggableStations: true,
-          onDragStateChanged: onDragStateChanged,
+          onDragStateChanged: widget.onDragStateChanged,
         ),
       ),
     );
@@ -617,14 +573,12 @@ class _StationTabContent extends StatelessWidget {
     required this.stationCount,
     this.header,
     this.isFiltered = false,
-    this.onClearFilter,
   });
 
   final Widget child;
   final int stationCount;
   final Widget? header;
   final bool isFiltered;
-  final VoidCallback? onClearFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -647,44 +601,7 @@ class _StationTabContent extends StatelessWidget {
           Expanded(child: child),
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 6, 0, 10),
-            child: isFiltered
-                ? Row(
-                    children: [
-                      Expanded(child: countLabel),
-                      Tooltip(
-                        message: context.l10n.clearFilter,
-                        child: InkWell(
-                          onTap: onClearFilter,
-                          borderRadius: BorderRadius.circular(4),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 2,
-                              vertical: 1,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  context.l10n.clear,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(width: 3),
-                                Icon(
-                                  Icons.close_rounded,
-                                  size: 14,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : Center(child: countLabel),
+            child: Center(child: countLabel),
           ),
         ],
       ),
