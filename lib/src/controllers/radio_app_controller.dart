@@ -558,7 +558,6 @@ class RadioAppController extends ChangeNotifier {
           : stationCategories.length - 1;
     }
     _syncActiveStationCategory();
-    _syncSelectedTabWithCategoriesTab();
   }
 
   void _syncActiveStationCategory() {
@@ -581,12 +580,6 @@ class RadioAppController extends ChangeNotifier {
     }
     _activeStationCategoryId =
         stationCategories[_activeStationCategoryIndex].id;
-  }
-
-  void _syncSelectedTabWithCategoriesTab() {
-    if (selectedTab > 1) {
-      selectedTab = 1;
-    }
   }
 
   Map<String, List<RadioStation>> _withCategoryStations(
@@ -980,7 +973,7 @@ class RadioAppController extends ChangeNotifier {
   }
 
   void selectTab(int value) {
-    selectedTab = value.clamp(0, 1).toInt();
+    selectedTab = value.clamp(0, 2).toInt();
     notifyListeners();
   }
 
@@ -1208,7 +1201,7 @@ class RadioAppController extends ChangeNotifier {
     final nextStations = <RadioStation>[
       station,
       ...recentlyPlayedStations.where(
-        (item) => item.stationUuid != station.stationUuid,
+        (item) => item.identityKey != station.identityKey,
       ),
     ].take(_recentlyPlayedLimit).toList(growable: false);
 

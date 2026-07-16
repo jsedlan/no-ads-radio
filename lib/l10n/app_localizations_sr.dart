@@ -148,6 +148,9 @@ class AppLocalizationsSr extends AppLocalizations {
   String get categories => 'Категорије';
 
   @override
+  String get recent => 'Недавно';
+
+  @override
   String get recentlyPlayed => 'Недавно слушано';
 
   @override
@@ -1377,6 +1380,9 @@ class AppLocalizationsSrLatn extends AppLocalizationsSr {
 
   @override
   String get categories => 'Kategorije';
+
+  @override
+  String get recent => 'Nedavno';
 
   @override
   String get recentlyPlayed => 'Nedavno slušano';

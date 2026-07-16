@@ -144,6 +144,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get categories => 'Categories';
 
   @override
+  String get recent => 'Recent';
+
+  @override
   String get recentlyPlayed => 'Recently played';
 
   @override

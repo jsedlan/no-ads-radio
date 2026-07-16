@@ -321,6 +321,12 @@ abstract class AppLocalizations {
   /// **'Categories'**
   String get categories;
 
+  /// No description provided for @recent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get recent;
+
   /// No description provided for @recentlyPlayed.
   ///
   /// In en, this message translates to:

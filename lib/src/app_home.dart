@@ -38,7 +38,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final selectedIndex = controller.selectedTab > 1
+        final selectedIndex = controller.selectedTab > 2
             ? 0
             : controller.selectedTab;
         if (controller.isBootstrapping) {
@@ -93,6 +93,7 @@ class _RadioHomePageState extends State<RadioHomePage> {
                         },
                       ),
                       _CategoriesTab(controller: controller),
+                      _RecentTab(controller: controller),
                     ],
                   ),
                 ),
@@ -169,6 +170,15 @@ class _TopTabBar extends StatelessWidget {
                 isDraggingDiscoverStation && categoryDropTargetIndex == 0,
             onCategoryDropTargetChanged: onCategoryDropTargetChanged,
             onCategoryDropAccepted: onCategoryDropAccepted,
+          ),
+        ),
+        Expanded(
+          child: _CompactTopTab(
+            icon: Icons.history_rounded,
+            selectedIcon: Icons.history_rounded,
+            label: context.l10n.recent,
+            selected: selectedIndex == 2,
+            onTap: () => controller.selectTab(2),
           ),
         ),
       ],
@@ -561,6 +571,41 @@ class _CategoriesTab extends StatelessWidget {
             newIndex: newIndex,
           );
         },
+      ),
+    );
+  }
+}
+
+class _RecentTab extends StatelessWidget {
+  const _RecentTab({required this.controller});
+
+  final RadioAppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final stations = controller.recentlyPlayedStations;
+    return _StationTabContent(
+      stationCount: stations.length,
+      header: stations.isEmpty
+          ? null
+          : Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: controller.clearRecentlyPlayed,
+                icon: Icon(
+                  Icons.delete_sweep_rounded,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+                label: Text(
+                  context.l10n.clear,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ),
+      child: _StationList(
+        controller: controller,
+        stations: stations,
+        emptyMessage: context.l10n.noRecentlyPlayedYet,
       ),
     );
   }

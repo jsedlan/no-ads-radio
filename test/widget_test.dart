@@ -123,11 +123,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Theme'), findsOneWidget);
-    expect(find.text('Recently played'), findsOneWidget);
+    expect(find.text('Recently played'), findsNothing);
     await tester.drag(find.byType(ListView), const Offset(0, -500));
     await tester.pumpAndSettle();
 
     expect(find.text('Show station icon'), findsOneWidget);
+    controller.dispose();
+  });
+
+  testWidgets('recent stations are available as a third home tab', (
+    tester,
+  ) async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+
+    await tester.pumpWidget(NoAdsRadioApp(controller: controller));
+    await tester.pumpAndSettle();
+    await controller.playStation(controller.discoverStations.first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recent'), findsOneWidget);
+    await tester.tap(find.text('Recent'));
+    await tester.pumpAndSettle();
+
+    expect(controller.selectedTab, 2);
+    expect(find.text('Test Station 1'), findsWidgets);
+    expect(find.byIcon(Icons.delete_sweep_rounded), findsOneWidget);
+
+    await tester.tap(find.text('Clear'));
+    await tester.pumpAndSettle();
+    expect(controller.recentlyPlayedStations, isEmpty);
+    expect(find.text('No recently played stations yet.'), findsOneWidget);
+
+    controller.dispose();
   });
 
   testWidgets('overflow menu opens about page', (tester) async {
@@ -1035,6 +1068,40 @@ void main() {
       controller.dispose();
     },
   );
+
+  test('recent history keeps multiple stations without UUIDs', () async {
+    final controller = await RadioAppController.bootstrap(
+      repository: FakeStationRepository(),
+      categoryStationsStore: InMemoryCategoryStationsStore(),
+      settingsStore: InMemorySettingsStore(),
+      audioEngine: FakeAudioEngine(),
+      connectivityService: FakeConnectivityService.online(),
+    );
+    final firstStation = RadioStation.fromJson(<String, dynamic>{
+      'stationuuid': '',
+      'name': 'First UUID-less Station',
+      'url': 'https://example.com/first-stream',
+      'url_resolved': 'https://example.com/first-stream',
+      'country': 'Serbia',
+    });
+    final secondStation = RadioStation.fromJson(<String, dynamic>{
+      'stationuuid': '',
+      'name': 'Second UUID-less Station',
+      'url': 'https://example.com/second-stream',
+      'url_resolved': 'https://example.com/second-stream',
+      'country': 'Serbia',
+    });
+
+    await controller.playStation(firstStation);
+    await controller.playStation(secondStation);
+
+    expect(controller.recentlyPlayedStations, <RadioStation>[
+      secondStation,
+      firstStation,
+    ]);
+
+    controller.dispose();
+  });
 
   test('controller retries a failed stream before giving up', () async {
     final audioEngine = FakeAudioEngine();

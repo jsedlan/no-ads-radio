@@ -183,39 +183,6 @@ class _SettingsViewState extends State<_SettingsView>
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (context) =>
-                          _RecentlyPlayedPage(controller: controller),
-                    ),
-                  );
-                },
-                title: Text(
-                  context.l10n.recentlyPlayed,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                subtitle: Text(
-                  controller.recentlyPlayedStations.isEmpty
-                      ? context.l10n.noRecentlyPlayed
-                      : context.l10n.stationCount(
-                          controller.recentlyPlayedStations.length,
-                        ),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: _mutedTextColor(context),
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) =>
                           _DiscoverCountriesPage(controller: controller),
                     ),
                   );
@@ -376,72 +343,6 @@ class _SettingsViewState extends State<_SettingsView>
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(context.l10n.couldNotOpenAndroidSettings)),
-    );
-  }
-}
-
-class _RecentlyPlayedPage extends StatelessWidget {
-  const _RecentlyPlayedPage({required this.controller});
-
-  final RadioAppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final theme = Theme.of(context);
-        return _Shell(
-          child: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          context.l10n.recentlyPlayed,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      if (controller.recentlyPlayedStations.isNotEmpty)
-                        TextButton.icon(
-                          onPressed: controller.clearRecentlyPlayed,
-                          icon: Icon(
-                            Icons.delete_sweep_rounded,
-                            color: theme.colorScheme.error,
-                          ),
-                          label: Text(
-                            context.l10n.clear,
-                            style: TextStyle(color: theme.colorScheme.error),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _StationList(
-                      controller: controller,
-                      stations: controller.recentlyPlayedStations,
-                      emptyMessage: context.l10n.noRecentlyPlayedYet,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }
