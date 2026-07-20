@@ -6,7 +6,7 @@ class AndroidSettingsLauncher {
   const AndroidSettingsLauncher();
 
   static const MethodChannel _channel = MethodChannel(
-    'com.example.no_ads_radio/android_settings',
+    'com.sedlan.noadsradio/android_settings',
   );
 
   Future<bool> openAppBatterySettings() async {

@@ -20,7 +20,7 @@ import 'src/services/settings_store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.example.no_ads_radio.channel.audio',
+    androidNotificationChannelId: 'com.sedlan.noadsradio.channel.audio',
     androidNotificationChannelName: 'Radio playback',
     androidNotificationOngoing: true,
   );
@@ -159,8 +159,8 @@ Future<void> _deleteOversizedLegacyCatalogPreferences() async {
 
   const maxReasonablePreferencesBytes = 8 * 1024 * 1024;
   const legacyPreferenceFiles = <String>[
-    '/data/data/com.example.no_ads_radio/shared_prefs/FlutterSharedPreferences.xml',
-    '/data/user/0/com.example.no_ads_radio/shared_prefs/FlutterSharedPreferences.xml',
+    '/data/data/com.sedlan.noadsradio/shared_prefs/FlutterSharedPreferences.xml',
+    '/data/user/0/com.sedlan.noadsradio/shared_prefs/FlutterSharedPreferences.xml',
   ];
 
   for (final path in legacyPreferenceFiles) {

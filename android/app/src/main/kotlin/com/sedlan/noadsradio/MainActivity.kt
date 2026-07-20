@@ -1,4 +1,4 @@
-package com.example.no_ads_radio
+package com.sedlan.noadsradio
 
 import android.content.Intent
 import android.net.Uri
@@ -22,7 +22,7 @@ class MainActivity : AudioServiceActivity() {
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
-            "com.example.no_ads_radio/android_settings"
+            "com.sedlan.noadsradio/android_settings"
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "openAppBatterySettings" -> result.success(openAppBatterySettings())
