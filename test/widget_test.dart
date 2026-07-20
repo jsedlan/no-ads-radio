@@ -649,15 +649,20 @@ void main() {
 
   test('station catalog object count includes unplayable sedlan objects', () {
     final objectCount = countStationCatalogJsonObjects('''
-      {
-        "stations": [
-          {"stationuuid": "station-1", "name": "Station 1"},
-          {"stationuuid": "station-2", "name": "Station 2", "url": ""}
-        ]
-      }
+      [
+        {"stationuuid": "station-1", "name": "Station 1"},
+        {"stationuuid": "station-2", "name": "Station 2", "url": ""}
+      ]
     ''');
 
     expect(objectCount, 2);
+  });
+
+  test('station catalog rejects wrapped station objects', () {
+    expect(
+      () => countStationCatalogJsonObjects('{"stations": []}'),
+      throwsA(isA<StationCatalogException>()),
+    );
   });
 
   test('controller records remote catalog load failure', () async {

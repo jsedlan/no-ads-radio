@@ -49,14 +49,9 @@ StationCatalogParseResult _parseStationCatalogJson(String value) {
 
 List<dynamic> _stationCatalogPayload(String value) {
   final payload = jsonDecode(value);
-  final stationsPayload = switch (payload) {
-    List<dynamic>() => payload,
-    {'stations': final List<dynamic> stations} => stations,
-    _ => null,
-  };
-  if (stationsPayload == null) {
+  if (payload is! List<dynamic>) {
     throw const StationCatalogException('Unexpected station catalog response.');
   }
 
-  return stationsPayload;
+  return payload;
 }
