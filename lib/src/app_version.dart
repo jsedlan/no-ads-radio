@@ -1,3 +1,3 @@
 part of 'app.dart';
 
-const String appVersion = '1.0.0+18';
+const String appVersion = '1.0.0+19';
